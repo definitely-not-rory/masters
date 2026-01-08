@@ -19,3 +19,6 @@ plt.rcParams['mathtext.fontset']='cm'
 plt.rcParams['axes.unicode_minus']=False
 
 os.chdir('/cosma/home/durham/dc-coll7/masters') #Hard-resetting current working directory
+
+z_sol=0.0196
+mass_h_atom=1.6735575*10**-24

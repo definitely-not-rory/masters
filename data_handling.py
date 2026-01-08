@@ -1,6 +1,8 @@
 from imports import *
-from halo_readers import get_halos, get_snap_nums, get_redshifts   
-import plot_generation as plot   
+from halo_readers import get_halos, get_redshifts, get_snap_num, get_redshift
+from npy_data_readers import read_raw_file, read_subfind_params
+import plot_generation as plot 
+import processing as data  
 
 def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapshot data into .npy files for a given halo and snapshot number/redshift
     
@@ -39,22 +41,20 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
             snap_num=snap_nums[-1]
             print(f'\nTarget Redshift: 0, Using Final Snapshot ({snap_num})')
         else:
-            index=np.argmin(np.abs(np.float64(snap_redshifts)-target_redshift)) #Locate index of redshift array entry with smallest absolute difference to target redshift
-            snap_num=snap_nums[index] #Retrieve correct snapshot number from array
-            print(f'\n--- Target Redshift: {target_redshift} ---\nSnapshot Number Selected: {snap_num}\nSnapshot True Redshift: {snap_redshifts[index]}\nRedshift Difference: {np.abs(snap_redshifts[index]-target_redshift)/target_redshift*100}%') #Print % error on target vs snapshot redshift       
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
     else:
         sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")') #Error message for incorrect snapshot number/redshift
 
     if 'plot_dz_snap' in kwargs: #Detects if plots are enabled
         if kwargs['plot_dz_snap']==True:
             if 'redshift' in kwargs:
-                plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshifts[index]) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
+                plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshift) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
             else:
                 plot.dz_snapshot(halo,snap_num) #Generates dz vs snapshot plot without target redshift elements if snapshot number was used
     elif 'all_plots' in kwargs:
         if kwargs['all_plots']==True: #Checks if override for all plots is enabled
             if 'redshift' in kwargs:
-                plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshifts[index]) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
+                plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshift) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
             else:
                 plot.dz_snapshot(halo,snap_num) #Generates dz vs snapshot plot without target redshift elements if snapshot number was used
 
@@ -202,7 +202,67 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
                     print(f'{type_name} {param} data saved externally')
         else:
             print(f'\n{halo} Snapshot {snap_num} {type_name} raw data complete')
+    print(f'\n{halo} Snapshot {snap_num} Raw Data Import Complete')
 
+def get_mass_density_data(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    halo_pos=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
+    redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
+
+    type_directories=['gas','dm','stars']
+    params=[['pos','mass'],['pos','mass'],['pos','mass']]
+    type_names=['Gas','DM','Stars']
+    
+    loaded_data = {}
+
+    for matter_type in type_directories:
+        type_index=type_directories.index(matter_type)
+        type_name=type_names[type_index]
+        to_load=params[type_index]
+
+        if os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/pos.npy')!=True or os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/mass.npy')!=True:
+            print(f'\nSnapshot {snap_num} {type_name} Raw Data Incomplete')
+            get_raw_data(halo,snap_num=snap_num)
+        else:
+            print(f'\nSnapshot {snap_num} {type_name} raw data located')
+        
+        type_data={param:read_raw_file(halo,matter_type,param,snap_num=snap_num) for param in to_load}
+        
+        loaded_data[matter_type]=type_data
+
+    print(loaded_data.keys())
+
+    for matter_type, data in loaded_data.items():
+        print(data['pos'])
+
+            
+
+    '''for matter_type in loaded_data:
+        if os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')!=True:
+            test
+        else:
+            rel_pos=np.load(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')'''
+        
+
+    
+
+    
+    
+
+    
+            
+            
+    
+        
 
 
             
