@@ -6,6 +6,7 @@ import os
 from matplotlib.patches import Circle
 import astropy.units as units
 import matplotlib as mpl
+from matplotlib import cm
 import matplotlib.font_manager as font_manager
 import importlib
 import sys

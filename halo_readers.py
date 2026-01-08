@@ -25,10 +25,10 @@ def get_snap_nums(halo,**alt_path): #Function to return all available snapshot n
 def get_redshift(snap_num,halo,loc,suffix,**text_outputs): #Auxilliary function to load one individual redshift for a given snapshot
     subfind = ar.gadget_subfind.load_subfind(int(snap_num), dir=loc + halo + suffix, onlyHeader=True) #Import subfind header only for given snapshot number
     redshift=subfind.redshift #Retrieve snapshot redshift value from header
-    if len(text_outputs.items())!=0:
+    if len(text_outputs.items())!=0: #Detects if a printed output is requested
         print_text=text_outputs['print_data']
         if print_text==True:
-            print(f'{halo} Snapshot {snap_num} = Redshift {redshift} ')
+            print(f'{halo} Snapshot {snap_num} = Redshift {redshift} ') #Prints output if necessary
     return redshift
 
 def get_redshifts(halo,**kwargs): #Function to import and store the redshift data of all snapshots for a given halo

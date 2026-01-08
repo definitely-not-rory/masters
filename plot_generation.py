@@ -63,9 +63,9 @@ def dz_snapshot(halo,snap_num,**redshifts):
     plt.show()
 
 def fof_scatter(halo,snap_num):
-    sf_positions=np.load(f'{halo}/{snap_num}/subfind/fof_positions.npy')
+    sf_positions=np.load(f'{halo}/{snap_num}/subfind/fof_positions.npy')*units.Mpc
     print('\nSubfind Position Data Imported')
-    sf_masses=np.load(f'{halo}/{snap_num}/subfind/fof_masses.npy')
+    sf_masses=np.load(f'{halo}/{snap_num}/subfind/fof_masses.npy')*10**10*units.M_sun
     print('Subfind Mass Data Imported')
     
     fig_fofscatter,ax_fofscatter=plt.subplots(1,3,figsize=(15,15),constrained_layout=True)
@@ -76,12 +76,15 @@ def fof_scatter(halo,snap_num):
     for plane in plane_indexes:
         scatter_axis=plane_indexes.index(plane)
         
-        scatter=ax_fofscatter[scatter_axis].scatter(sf_positions[:,plane[0]],sf_positions[:,plane[1]],s=1,c=np.log10(sf_masses),cmap='cividis')
+        ax_fofscatter[scatter_axis].set_facecolor('black')
+        scatter=ax_fofscatter[scatter_axis].scatter(sf_positions[:,plane[0]],sf_positions[:,plane[1]],s=.5,c=np.log10(sf_masses.to_value(units.kg)),cmap=cm.afmhot,vmax=34)
         scatters.append(scatter)
         
-        fof1_marker=ax_fofscatter[scatter_axis].scatter(sf_positions[0,plane[0]],sf_positions[0,plane[1]],c='r',marker='x')
+        fof1_marker=ax_fofscatter[scatter_axis].scatter(sf_positions[0,plane[0]],sf_positions[0,plane[1]],c='r',marker='*',s=100)
 
-    colorbar=fig_fofscatter.colorbar(scatters[-1],ax=ax_fofscatter,shrink=.25)
+    colourbar=fig_fofscatter.colorbar(scatters[-1],ax=ax_fofscatter,shrink=.25)
+    colourbar.set_label('$log_{10}($FoF Group Mass$)$ ($kg$)',fontsize=10)
+
     
     ax_fofscatter[0].set_xlabel('$x$ ($Mpc$)')
     ax_fofscatter[0].set_ylabel('$y$ ($Mpc$)')

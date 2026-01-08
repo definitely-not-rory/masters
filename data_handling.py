@@ -3,6 +3,9 @@ from halo_readers import get_halos, get_snap_nums, get_redshifts
 import plot_generation as plot   
 
 def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapshot data into .npy files for a given halo and snapshot number/redshift
+    
+    #--- Halo Selection ---
+
     if 'path' in kwargs: #Detects for provision of alternate data directory
         alt_path=kwargs['path']
         available_halos=get_halos(path=alt_path) #Loads halos in alternate directory
@@ -20,6 +23,8 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')
+
+    #--- Snapshot Number Selection ---
 
     if 'snap_num' in kwargs: #Detects if a specific snapshot number is provided
         snap_num=str(kwargs['snap_num']) #Loads snapshot number integer input
@@ -39,13 +44,20 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
             print(f'\n--- Target Redshift: {target_redshift} ---\nSnapshot Number Selected: {snap_num}\nSnapshot True Redshift: {snap_redshifts[index]}\nRedshift Difference: {np.abs(snap_redshifts[index]-target_redshift)/target_redshift*100}%') #Print % error on target vs snapshot redshift       
     else:
         sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")') #Error message for incorrect snapshot number/redshift
-  
+
     if 'plot_dz_snap' in kwargs: #Detects if plots are enabled
         if kwargs['plot_dz_snap']==True:
             if 'redshift' in kwargs:
                 plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshifts[index]) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
             else:
                 plot.dz_snapshot(halo,snap_num) #Generates dz vs snapshot plot without target redshift elements if snapshot number was used
+    elif 'all_plots' in kwargs:
+        if kwargs['all_plots']==True: #Checks if override for all plots is enabled
+            if 'redshift' in kwargs:
+                plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshifts[index]) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
+            else:
+                plot.dz_snapshot(halo,snap_num) #Generates dz vs snapshot plot without target redshift elements if snapshot number was used
+
 
     if 'path' in kwargs: #Detects for provision of alternate data directory
         loc=kwargs['path']
@@ -53,58 +65,150 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
     suffix='/output/' #Suffix to ensure data from each snapshot is read
 
-    if os.path.isdir(f'{halo}/{snap_num}')!=True:
-        print(f'\nNo Directory Detected for {halo} Snapshot {snap_num}')
-        os.mkdir(f'{halo}/{snap_num}')
+    if os.path.isdir(f'{halo}/{snap_num}')!=True: #Checks for dedicated directory for chosen snapshot
+        print(f'\nNo Directory Detected for {halo} Snapshot {snap_num}') 
+        os.mkdir(f'{halo}/{snap_num}') #Creates snapshot directory if necessary
         print(f'{halo} Snapshot {snap_num} Directory Created')
     else:
         print(f'\n{halo} Snapshot {snap_num} Directory Located')    
 
+    #--- Subfind Data Handling ---
 
-    if os.path.isdir(f'{halo}/{snap_num}/subfind')!=True:
+    if os.path.isdir(f'{halo}/{snap_num}/subfind')!=True: #Checks for subfind data directory within snapshot directory
         print(f'\nNo {halo} Snapshot {snap_num} subfind directory detected')
-        os.mkdir(f'{halo}/{snap_num}/subfind')
+        os.mkdir(f'{halo}/{snap_num}/subfind') #Creates subfind directory if necessary
         print(f'Subfind directory for {halo} Snapshot {snap_num} created')
     else:
         print(f'\n{halo} Snapshot {snap_num} Subfind Directory Located')
 
-    if os.path.exists(f'{halo}/{snap_num}/subfind/fof_positions.npy')!=True or os.path.exists(f'{halo}/{snap_num}/subfind/fof_masses.npy')!=True or os.path.exists(f'{halo}/{snap_num}/subfind/halo_params.npy')!=True:
-        print(f'\nNo Subfind FoF Positions Data Located\nImporting subfind data for {halo} from Snapshot {snap_num}')
-        subfind_data = ar.gadget_subfind.load_subfind(int(snap_num), dir=loc + halo + suffix) #Import subfind dataset
-        print('Subfind data imported')
+    print(f'\nImporting {halo} Snapshot {snap_num} Subfind Data')
+    subfind_data = ar.gadget_subfind.load_subfind(int(snap_num), dir=loc + halo + suffix) #Import subfind dataset
+    print('Subfind Data imported')
 
-        sf_positions=subfind_data.data['fpos'] #Imports necessary subfind data
-        all_sf_masses=subfind_data.data['fmty']
+    if os.path.exists(f'{halo}/{snap_num}/subfind/fof_positions.npy')!=True or os.path.exists(f'{halo}/{snap_num}/subfind/fof_masses.npy')!=True or os.path.exists(f'{halo}/{snap_num}/subfind/halo_params.npy')!=True: #Detects if subfind data arrays have been already imported and stored external
+        print(f'\nNo Subfind FoF Data Located\Loading subfind data for {halo} from Snapshot {snap_num}') #Creates relevant external data arrays if required
 
-        high_res_mask=(all_sf_masses[:,2]==0) & (all_sf_masses[:,3]==0)
+        #--- Subfind-Wide Data Processing ---
+        sf_positions=subfind_data.data['fpos']  #FoF Positions (in Mpc)
+        all_sf_masses=subfind_data.data['fmty'] #FoF Masses Across All Types (in 10^10 M_sol)
+
+        high_res_mask=(all_sf_masses[:,2]==0) & (all_sf_masses[:,3]==0) #Masks mass data to exclude low-res structures
         high_res_sf_masses=all_sf_masses[high_res_mask]
-        sf_masses=np.sum(high_res_sf_masses,axis=1)
+        sf_masses=np.sum(high_res_sf_masses,axis=1) #Calculates total high-res mass for each FoF group
         
-        np.save(f'{halo}/{snap_num}/subfind/fof_positions.npy',sf_positions)
+        np.save(f'{halo}/{snap_num}/subfind/fof_positions.npy',sf_positions) #Saves subfind-wide arrays to external .npy files
         print('Subfind FoF position data saved')
 
         np.save(f'{halo}/{snap_num}/subfind/fof_masses.npy',sf_masses)
         print('Subfind FoF mass data saved')
 
-        halo_pos=sf_positions[0]
-        halo_mass=sf_masses[0]
-        halo_r200=subfind_data.data['frc2'][0]
+        #--- FoF Group 1/Main Halo Data Processing ---
+        halo_pos=sf_positions[0] #Main Halo Position (in Mpc)
+        halo_mass=sf_masses[0] #Main Halo Mass (in 10^10 M_sol)
+        halo_r200=subfind_data.data['frc2'][0] #Main Halo R_200_crit (in Mpc)
+
         redshift=subfind_data.redshift #Retrieve snapshot redshift value from header
         
-        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200],dtype='object')
+        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200],dtype='object') #Create storage array for FoF Group 1 parameters
         
-        np.save(f'{halo}/{snap_num}/subfind/halo_params.npy',saved_params)
+        np.save(f'{halo}/{snap_num}/subfind/halo_params.npy',saved_params) #Save FoF Group 1 parameters to external .npy file
         print('Subfind Halo Parameters Saved')
     else:
-        print('\nSubfind Data Located')
+        print('\nFoF Subfind Data Located')
     
     if 'plot_fof_scatter' in kwargs: #Detects if plots are enabled
         if kwargs['plot_fof_scatter']==True:
             plot.fof_scatter(halo,snap_num) #Generates FoF scatter plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.fof_scatter(halo,snap_num)
+
+    #--- Snapshot Data Handling ---
+
+    #--- Directory Management ---
+    if os.path.isdir(f'{halo}/{snap_num}/raw')!=True: #Checks for raw snapshot data directory within snapshot directory
+        print(f'\nNo {halo} raw Snapshot {snap_num} data directory detected')
+        os.mkdir(f'{halo}/{snap_num}/raw') #Creates raw data directory if necessary
+
+        os.mkdir(f'{halo}/{snap_num}/raw/gas') #Creates raw matter type directories
+        os.mkdir(f'{halo}/{snap_num}/raw/dm')
+        os.mkdir(f'{halo}/{snap_num}/raw/stars')
+
+        print(f'Directory for {halo} raw Snapshot {snap_num} data created')
+    else:
+        print(f'\n{halo} raw Snapshot {snap_num} data Directory Located')
+
+    #--- Data Import Selection ---
+    #Arrays of necessary snapshot data needed to be saved externally
+    gas_data=['pos','mass','gz','gmet','nh'] #Gas: Position (Mpc), Mass (10^10 M_sol), Metallicity ( ), Gas Mass Fractions ( ), Neutral Hydrogen Mass Fraction ( )
+    dm_data=['pos','dm_params','mass'] #DM: Position (Mpc), Hubble Parameter and DM Particle Mass (10^10 M_sol), Mass (10^10 M_sol)
+    stars_data=['pos','mass'] #Stars: Position (Mpc), Mass (10^10 M_sol)
+    req_snapshot_data=[gas_data,dm_data,stars_data] #2D array for iterative efficiency
+    
+    types=['Gas','DM','Stars'] #Text output labels
+    type_directories=['gas','dm','stars'] #names of target directories to save .npy files to
+    lyra_types=[0,1,4] #Type numbers for gas/DM/stars in raw Lyra data
+
+    current_gas_data=os.listdir(f'{halo}/{snap_num}/raw/gas') #Import list of current files saved for each file
+    current_dm_data=os.listdir(f'{halo}/{snap_num}/raw/dm')
+    current_stars_data=os.listdir(f'{halo}/{snap_num}/raw/stars')
+
+    current_data=[current_gas_data,current_dm_data,current_stars_data] #2D array for comparison to required data
+
+    #--- Data Imports ---
+    for matter_type in req_snapshot_data: #Check whether all required data is present in each type directory
+        type_index=req_snapshot_data.index(matter_type) #Determine which index (0,1,2) current target matter type is registered in
+        type_name=types[type_index] 
+        if len(matter_type)!=len(current_data[type_index]): #Determine if quantity of current directory entries matches required data
+            lyra_type=lyra_types[type_index] #Import Lyra type for current target type
+
+            #--- Snapshot Importing ---
+            print(f'\n{halo} Snapshot {snap_num} {type_name} raw data incomplete\nImporting Snapshot {snap_num} {type_name} data') #If current data is incomplete, import relevant type's snapshot data
+            snapshot_data= ar.gadget_snap.gadget_snapshot(loc + halo + suffix + 'snapdir_'+str(snap_num)+'/snapshot_'+str(snap_num),loadonlytype=[lyra_type],loadonlyhalo = 0, subfind = subfind_data, hdf5=True, lazy_load=True)
+            print(f'{halo} Snapshot {snap_num} {type_name} data loaded')
+
+            print(f'\nSaving required {type_name} snapshot data to external file')
+
+            #--- Initial Raw Data Handling and External .npy Storage ---
+            if type_index==1: #Applies necessary exceptions for Lyra dark matter data
+                dm_pos=snapshot_data.data['pos'] #Loads DM position data
+                print(f'\nDM pos data loaded')
+
+                np.save(f'{halo}/{snap_num}/raw/dm/pos.npy',dm_pos) #Saves DM position data to external .npy file
+                print(f'DM pos data saved externally')
+                
+                #Loads necessary parameters to determine constant DM particle mass
+                h=snapshot_data.header['HubbleParam'] #Import h and header DM particle mass
+                dm_particle_mass=snapshot_data.header['MassTable'][1]/h #Apply relevant conversion from header DM particle mass to 'real' mass
+                print(f'\nDM Mass Parameters data loaded')
+
+                dm_params=np.array([h,dm_particle_mass]) #Stores all DM mass parameters in array for external file
+                np.save(f'{halo}/{snap_num}/raw/dm/dm_params.npy',dm_params) #Saves DM parameters to external .npy file
+                print(f'DM Mass Parameters data saved externally')
+                
+                dm_mass=np.full_like(dm_pos[:,0],dm_particle_mass) #Creates 'normal' DM mass array using params and loaded snapshot data
+                print(f'\nDM mass data calculated')
+
+                np.save(f'{halo}/{snap_num}/raw/dm/mass.npy',dm_mass) #Saves DM mass array
+                print(f'DM mass data saved externally')     
+            else: #Completes all non-exception exports
+                to_save=req_snapshot_data[type_index] #Loads all requires snapshot data labels
+                for param in to_save: #Exports each required parameter for target type
+                    data=snapshot_data.data[param] #Loads target type's target parameter from snapshot
+                    print(f'\n{type_name} {param} data loaded')
+
+                    directory=type_directories[type_index] #Finds correct type directory for data storage
+                    np.save(f'{halo}/{snap_num}/raw/{directory}/{param}.npy',data) #Saves parameter data to external .npy file
+                    print(f'{type_name} {param} data saved externally')
+        else:
+            print(f'\n{halo} Snapshot {snap_num} {type_name} raw data complete')
+
+
+
+            
 
 
            
-
 
 
 
