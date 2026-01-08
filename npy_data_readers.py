@@ -2,8 +2,8 @@ from imports import *
 from halo_readers import get_snap_num
 
 def generate_units_file():
-    params=['pos','mass','gz','gmet','nh']
-    param_units=[units.Mpc,10**10*units.M_sun,z_sol,1,1]
+    params=['pos','mass','gz','gmet','nh','rel_pos','radii']
+    param_units=[units.Mpc,10**10*units.M_sun,z_sol,1,1,units.Mpc,units.Mpc]
     data=np.array([params,param_units],dtype='object')
     np.save('all_units.npy',data)
 

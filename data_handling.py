@@ -2,7 +2,7 @@ from imports import *
 from halo_readers import get_halos, get_redshifts, get_snap_num, get_redshift
 from npy_data_readers import read_raw_file, read_subfind_params
 import plot_generation as plot 
-import processing as data  
+import processing as calc  
 
 def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapshot data into .npy files for a given halo and snapshot number/redshift
     
@@ -239,19 +239,122 @@ def get_mass_density_data(halo,**kwargs):
         
         loaded_data[matter_type]=type_data
 
-    print(loaded_data.keys())
+    for matter_type, data in loaded_data.items():
+        type_name=type_names[type_directories.index(matter_type)]
+
+        if os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')!=True:
+            print(f'{type_name} Relative Position Data Not Found, Generating')
+
+            rel_pos=calc.to_rel(data['pos'],halo_pos)
+            loaded_data[matter_type]['rel_pos']=rel_pos
+
+            np.save(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy',rel_pos.value)
+            print(f'{type_name} Relative Position File Generated')
+        else:
+            rel_pos=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num)
+            print(f'{type_name} Relative Positions Loaded')
+
+            loaded_data[matter_type]['rel_pos']=rel_pos
 
     for matter_type, data in loaded_data.items():
-        print(data['pos'])
+        type_name=type_names[type_directories.index(matter_type)]
+        if os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/radii.npy')!=True:
+            print(f'{type_name} Radial Position Data Not Found, Generating')
+
+            radii=calc.to_rad(data['pos'],halo_pos)
+            loaded_data[matter_type]['radii']=radii
+
+            np.save(f'{halo}/{snap_num}/raw/{matter_type}/radii.npy',radii.value)
+            print(f'{type_name} Radial Position File Generated')
+        else:
+            radii=read_raw_file(halo,matter_type,'radii',snap_num=snap_num)
+            print(f'{type_name} Radial Positions Loaded')
+
+            loaded_data[matter_type]['radii']=radii
+    
+    if os.path.isdir(f'{halo}/{snap_num}/binned')!=True:
+        os.mkdir(f'{halo}/{snap_num}/binned')
+                      
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512
+
+    if os.path.isdir(f'{halo}/{snap_num}/binned/{bin_num}')!=True:
+        os.mkdir(f'{halo}/{snap_num}/binned/{bin_num}')
+    
+    if os.path.isdir(f'{halo}/{snap_num}/binned/{bin_num}/total_mass')!=True:
+        os.mkdir(f'{halo}/{snap_num}/binned/{bin_num}/total_mass')
+    
+    for matter_type, data in loaded_data.items():
+        type_name=type_names[type_directories.index(matter_type)]
+        if os.path.exists(f'{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy')!=True:
+            extents=calc.get_extent(data['rel_pos'])
+            print(f'\n{matter_type} spatial extent calculated')
+            
+            bin_widths=[extents[dimension]['range'].to_value(units.cm)/bin_num for dimension in extents]
+            print(f'\n{matter_type} bin widths calculated')
+
+            plane_indexes=[[0,1],[0,2],[1,2]]
+            plane_names=['xy','xz','yz']
+
+            cm_rel_pos=data['rel_pos'].to_value(units.cm)
+            g_mass=data['mass'].to_value(units.g)
+
+            proj_densities={}
+
+            for plane in plane_indexes:
+                binned_mass=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass,bins=[bin_num,bin_num],statistic='sum').statistic
+                print(f'\n{matter_type} {plane_names[plane_indexes.index(plane)]} binned masses calculated')
+                bin_area=bin_widths[plane[0]]*bin_widths[plane[1]]
+                
+                proj_mass_dens=binned_mass/bin_area
+                print(f'\n{matter_type} {plane_names[plane_indexes.index(plane)]} projected densities calculated')
+
+                proj_densities[plane_names[plane_indexes.index(plane)]]=proj_mass_dens
+
+            loaded_data[matter_type]['proj_dens']=proj_densities
+
+            save_data=[proj_densities['xy'],proj_densities['xz'],proj_densities['yz']]
+            np.save(f'{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy',save_data)
+            print(f'\n{matter_type} projected density file created')
+        else:
+            loaded_data[matter_type]['proj_dens']=np.load(f'{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy')
+            print(f'\n{matter_type} projected density file loaded')
+            
+
+
+
+
+
+
+
+
+'''xy_binned_mass=stats.binned_statistic_2d(pos[:,0].to_value(units.cm),pos[:,1].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
+    xz_binned_mass=stats.binned_statistic_2d(pos[:,0].to_value(units.cm),pos[:,2].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
+    yz_binned_mass=stats.binned_statistic_2d(pos[:,1].to_value(units.cm),pos[:,2].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
+    
+    extent_x=np.max(pos[:,0])-np.min(pos[:,0])
+    extent_y=np.max(pos[:,1])-np.min(pos[:,1])
+    extent_z=np.max(pos[:,2])-np.min(pos[:,2])
+
+    binwidth_x=extent_x/bin_num
+    binwidth_y=extent_y/bin_num
+    binwidth_z=extent_z/bin_num
+
+    binarea_xy=binwidth_x.to_value(units.cm)*binwidth_y.to_value(units.cm)
+    binarea_xz=binwidth_x.to_value(units.cm)*binwidth_z.to_value(units.cm)
+    binarea_yz=binwidth_y.to_value(units.cm)*binwidth_z.to_value(units.cm)
+
+    return xy_binned_mass.statistic/binarea_xy,xz_binned_mass.statistic/binarea_xz,yz_binned_mass.statistic/binarea_yz'''
+
+    
+    
+
 
             
 
-    '''for matter_type in loaded_data:
-        if os.path.exists(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')!=True:
-            test
-        else:
-            rel_pos=np.load(f'{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')'''
-        
+
 
     
 
