@@ -4,8 +4,6 @@ from npy_data_readers import read_raw_file, read_subfind_params
 import plot_generation as plot 
 import processing as calc  
 
-#test
-
 def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapshot data into .npy files for a given halo and snapshot number/redshift
     
     #--- Halo Selection ---
@@ -282,15 +280,15 @@ def get_mass_density_data(halo,**kwargs):
     else:
         bin_num=512
 
-    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}')!=True:
-        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}')
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px')!=True:
+        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px')
     
-    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}/total_mass')!=True:
-        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}/total_mass')
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')!=True:
+        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')
     
     for matter_type, data in loaded_data.items():
         type_name=type_names[type_directories.index(matter_type)]
-        if os.path.exists(f'halos/{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy')!=True:
+        if os.path.exists(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')!=True:
             extents=calc.get_extent(data['rel_pos'])
             print(f'\n{matter_type} spatial extent calculated')
             
@@ -318,38 +316,50 @@ def get_mass_density_data(halo,**kwargs):
             loaded_data[matter_type]['proj_dens']=proj_densities
 
             save_data=[proj_densities['xy'],proj_densities['xz'],proj_densities['yz']]
-            np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy',save_data)
+            np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy',save_data)
             print(f'\n{matter_type} projected density file created')
         else:
-            loaded_data[matter_type]['proj_dens']=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}/total_mass/{matter_type}.npy')
+            loaded_data[matter_type]['proj_dens']=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')
             print(f'\n{matter_type} projected density file loaded')
+
+    if 'plot_proj_dens' in kwargs: #Detects if plots are enabled
+        if kwargs['plot_proj_dens']==True:
+            plot.proj_mass_density(halo,bin_num,snap_num=snap_num) #Generates g/cm^2 projected density plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.proj_mass_density(halo,bin_num,snap_num=snap_num)
+
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/radial_mass_density')!=True:
+        os.mkdir(f'halos/{halo}/{snap_num}/binned/radial_mass_density')
+
+    for matter_type, data in loaded_data.items():
+        type_name=type_names[type_directories.index(matter_type)]
+        if os.path.exists(f'halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')!=True:
+            spherical_bins = np.logspace(-4,-1,50)*units.Mpc
+            bin_centres=(spherical_bins[:-1] + spherical_bins[1:])/2
+
+            sphere_volumes=[4/3*np.pi*radii.value**3 for radii in spherical_bins]
+            shell_volumes=np.diff(sphere_volumes)
             
+            radial_densities=stats.binned_statistic(data['radii'],data['mass'],bins=spherical_bins,statistic='sum').statistic/shell_volumes*units.M_sun/units.Mpc**3
 
+            kpc_bin_centres=bin_centres.to_value(units.kpc)
+            gcm3_radial_densities=radial_densities.to_value(units.g/units.cm**3)
 
-
-
-
-
-
-
-'''xy_binned_mass=stats.binned_statistic_2d(pos[:,0].to_value(units.cm),pos[:,1].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
-    xz_binned_mass=stats.binned_statistic_2d(pos[:,0].to_value(units.cm),pos[:,2].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
-    yz_binned_mass=stats.binned_statistic_2d(pos[:,1].to_value(units.cm),pos[:,2].to_value(units.cm),mass.to_value(units.g)/factor,bins=[bin_num,bin_num],statistic='sum')
+            radial_density_profile=np.array([kpc_bin_centres,gcm3_radial_densities])
+            np.save(f'halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy',radial_density_profile)
     
-    extent_x=np.max(pos[:,0])-np.min(pos[:,0])
-    extent_y=np.max(pos[:,1])-np.min(pos[:,1])
-    extent_z=np.max(pos[:,2])-np.min(pos[:,2])
+    if 'plot_rad_dens' in kwargs: #Detects if plots are enabled
+        if kwargs['plot_rad_dens']==True:
+            plot.radial_mass_density(halo,snap_num=snap_num) #Generates g/cm^2 radial density plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.radial_mass_density(halo,snap_num=snap_num)
 
-    binwidth_x=extent_x/bin_num
-    binwidth_y=extent_y/bin_num
-    binwidth_z=extent_z/bin_num
-
-    binarea_xy=binwidth_x.to_value(units.cm)*binwidth_y.to_value(units.cm)
-    binarea_xz=binwidth_x.to_value(units.cm)*binwidth_z.to_value(units.cm)
-    binarea_yz=binwidth_y.to_value(units.cm)*binwidth_z.to_value(units.cm)
-
-    return xy_binned_mass.statistic/binarea_xy,xz_binned_mass.statistic/binarea_xz,yz_binned_mass.statistic/binarea_yz'''
-
+            
+            
+            
+                
     
     
 

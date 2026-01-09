@@ -1,5 +1,7 @@
 from imports import *
 from halo_readers import get_redshift, get_snap_num
+from npy_data_readers import read_raw_file, read_subfind_params
+import processing as calc
 
 def dz_snapshot(halo,snap_num,**redshifts):
     snap_nums,snap_redshifts=np.float64(np.load(f'halos/{halo}/redshifts.npy'))
@@ -120,7 +122,8 @@ def fof_scatter(halo,**kwargs):
 
     plt.show()
 
-def proj_mass_density(halo,**kwargs):
+
+def proj_mass_density(halo,bin_num,**kwargs):
     if 'snap_num' not in kwargs:
         if 'redshift' in kwargs:
             target_redshift=kwargs['redshift']
@@ -130,3 +133,100 @@ def proj_mass_density(halo,**kwargs):
     else:
         snap_num=kwargs['snap_num']
         snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    if 'type_only' in kwargs:
+        req_types=[kwargs['type_only']]
+    else:
+        req_types=['gas','dm','stars']
+
+    type_plot_info={'gas':{'cmap':'plasma','title':f'{display_halo} Gas, z =${display_redshift}$, {bin_num} bins'},'dm':{'cmap':'viridis','title':f'{display_halo} Dark Matter, z =${display_redshift}$, {bin_num} bins'},'stars':{'cmap':'magma','title':f'{display_halo} Stars, z =${display_redshift}$, {bin_num} bins'}}
+
+    fig_masshist,ax_masshist=plt.subplots(len(req_types),3,figsize=(15,15),constrained_layout=True)
+    
+    planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
+
+    for matter_type in req_types:
+        loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')[planes[plane]['index']]for plane in planes}
+        loaded_data['rel_pos']=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num)
+        
+        vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
+        vmax=np.log10(np.max([loaded_data[plane]for plane in planes]))
+
+        extents=calc.get_extent(loaded_data['rel_pos'])
+        plot_extents={plane:[extents[planes[plane]['axes'][0]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][0]]['max'].to_value(units.kpc), extents[planes[plane]['axes'][1]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][1]]['max'].to_value(units.kpc)] for plane in planes}
+
+        row_index=req_types.index(matter_type)
+
+        imshows=[ax_masshist[row_index][planes[plane]['index']].imshow(np.log10(loaded_data[plane]),extent=plot_extents[plane],vmin=vmin,vmax=vmax,cmap=type_plot_info[matter_type]['cmap'],aspect='equal') for plane in planes]
+        for plane in planes:
+            ax_masshist[row_index][planes[plane]['index']].set_xlabel(planes[plane]['x_label'])
+            ax_masshist[row_index][planes[plane]['index']].set_ylabel(planes[plane]['y_label'])
+            if planes[plane]['index']==1:
+                ax_masshist[row_index][planes[plane]['index']].set_title(type_plot_info[matter_type]['title'],fontsize=16,pad=20)
+        
+        colourbar=fig_masshist.colorbar(imshows[-1],ax=ax_masshist[row_index],shrink=.75)
+        colourbar.set_label('$log_{10}($Projected Density$)$ ($g/cm^2$)')
+        
+        for ax in ax_masshist[row_index]:
+            ax.set_aspect('equal', adjustable='box')
+            
+            ax.set_box_aspect(1.0)
+        
+            ax.xaxis.label.set_size(12)
+            ax.yaxis.label.set_size(12)
+            ax.tick_params(labelsize=10)
+
+    plt.show()
+
+def radial_mass_density(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    if 'type_only' in kwargs:
+        req_types=[kwargs['type_only']]
+    else:
+        req_types=['gas','dm','stars']
+
+    halo_r200=read_subfind_params(halo,snap_num=snap_num)['halo_r200'].to_value(units.kpc)
+
+    type_plot_info={'gas':{'colour':'red','label':'Gas','label_pad':0.045},'dm':{'colour':'blue','label':'DM','label_pad':0.045},'stars':{'colour':'orange','label':'Stars','label_pad':0.055}}
+
+    fig_radialdensity, ax_radialdensity = plt.subplots()
+
+    for matter_type in req_types:
+        loaded_data=np.load(f'halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')
+        
+        bin_centres=loaded_data[0]
+        densities=loaded_data[1]
+
+        ax_radialdensity.plot(bin_centres,densities,c=type_plot_info[matter_type]['colour'])
+        plt.text(bin_centres[0]-type_plot_info[matter_type]['label_pad'], densities[0], type_plot_info[matter_type]['label'], fontsize=12,c=type_plot_info[matter_type]['colour'])
+
+    ax_radialdensity.axvline(halo_r200,c='k',ls='dashed')
+    plt.text(halo_r200+1, 10**-27, '$R_{200_{crit}}=$'+str(np.round(halo_r200,1))+'$ kpc$', fontsize=12,c='k',rotation='vertical')
+
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.xlabel('Radius ($kpc$)')
+    plt.ylabel('Spherical Radial Density ($g/cm^3$)')
+    plt.xlim(left=0.05)
+    plt.ylim(top=10**-22)
+    plt.title(display_halo+', $z=$'+str(display_redshift))
+    plt.show()
+
+        
+        
+
