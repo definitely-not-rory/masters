@@ -1,8 +1,8 @@
 from imports import *
-from halo_readers import get_redshift
+from halo_readers import get_redshift, get_snap_num
 
 def dz_snapshot(halo,snap_num,**redshifts):
-    snap_nums,snap_redshifts=np.float64(np.load(f'{halo}/redshifts.npy'))
+    snap_nums,snap_redshifts=np.float64(np.load(f'halos/{halo}/redshifts.npy'))
 
     dz=np.abs(np.diff(snap_redshifts))
 
@@ -23,7 +23,7 @@ def dz_snapshot(halo,snap_num,**redshifts):
     plt.text(snap_nums[0]-5, snap_redshifts[0]+.3, '$z$', fontsize=14,c='b')
     plt.text(int(snap_num)+2, 40, f'Snapshot Number $= {snap_num}$', fontsize=12,c='k',rotation='vertical')
 
-    display_redshift=np.round(get_redshift(snap_num,halo,'/cosma8/data/dp004/lyra/original_sample/','/output/'),3)
+    display_redshift=np.round(get_redshift(halo,snap_num),3)
     display_halo=halo.replace('_',' ')
 
     plt.title(f'{display_halo}, $z = {display_redshift}$')
@@ -62,10 +62,20 @@ def dz_snapshot(halo,snap_num,**redshifts):
 
     plt.show()
 
-def fof_scatter(halo,snap_num):
-    sf_positions=np.load(f'{halo}/{snap_num}/subfind/fof_positions.npy')*units.Mpc
+def fof_scatter(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    sf_positions=np.load(f'halos/{halo}/{snap_num}/subfind/fof_positions.npy')*units.Mpc
     print('\nSubfind Position Data Imported')
-    sf_masses=np.load(f'{halo}/{snap_num}/subfind/fof_masses.npy')*10**10*units.M_sun
+    sf_masses=np.load(f'halos/{halo}/{snap_num}/subfind/fof_masses.npy')*10**10*units.M_sun
     print('Subfind Mass Data Imported')
     
     fig_fofscatter,ax_fofscatter=plt.subplots(1,3,figsize=(15,15),constrained_layout=True)
@@ -93,7 +103,7 @@ def fof_scatter(halo,snap_num):
     ax_fofscatter[1].set_xlabel('$x$ ($Mpc$)')
     ax_fofscatter[1].set_ylabel('$z$ ($Mpc$)')
 
-    display_redshift=np.round(get_redshift(snap_num,halo,'/cosma8/data/dp004/lyra/original_sample/','/output/'),3)
+    display_redshift=np.round(get_redshift(halo,snap_num),3)
     display_halo=halo.replace('_',' ')
 
     ax_fofscatter[1].set_title(f'{display_halo}, $z = {display_redshift}$')
@@ -110,3 +120,13 @@ def fof_scatter(halo,snap_num):
 
     plt.show()
 
+def proj_mass_density(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)

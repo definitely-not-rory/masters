@@ -27,7 +27,7 @@ def read_raw_file(halo,matter_type,param,**kwargs):
         snap_num=get_snap_num(halo,target_redshift)[0]
     else:
         sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
-    raw_data=np.load(f'{halo}/{snap_num}/raw/{matter_type}/{param}.npy')
+    raw_data=np.load(f'halos/{halo}/{snap_num}/raw/{matter_type}/{param}.npy')
     units_data=load_units(raw_data,param)
     return(units_data)
 
@@ -39,7 +39,7 @@ def read_subfind_params(halo,**kwargs):
         snap_num=get_snap_num(halo,target_redshift)[0]
     else:
         sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
-    raw_data=np.load(f'{halo}/{snap_num}/subfind/halo_params.npy',allow_pickle=True)
+    raw_data=np.load(f'halos/{halo}/{snap_num}/subfind/halo_params.npy',allow_pickle=True)
     param_names=['redshift','halo_pos','halo_mass','halo_r200']
     param_units=[1,units.Mpc,10**10*units.M_sun,units.Mpc]
     subfind_params={param:raw_data[param_names.index(param)]*param_units[param_names.index(param)] for param in param_names}
