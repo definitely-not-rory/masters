@@ -73,8 +73,13 @@ def get_snap_num(halo,target_redshift):
     else:
         snap_nums,snap_redshifts=np.load(f'halos/{halo}/redshifts.npy')
         print(f'\n {halo} redshift file imported')
-    index=np.argmin(np.abs(np.float64(snap_redshifts)-target_redshift)) #Locate index of redshift array entry with smallest absolute difference to target redshift
-    snap_num=snap_nums[index] #Retrieve correct snapshot number from array
-    snap_redshift=np.float64(snap_redshifts[index])
+    
+    if target_redshift==0:
+        snap_num=snap_nums[-1]
+        snap_redshift=np.float64(snap_redshifts[-1])
+    else:
+        index=np.argmin(np.abs(np.float64(snap_redshifts)-target_redshift)) #Locate index of redshift array entry with smallest absolute difference to target redshift
+        snap_num=snap_nums[index] #Retrieve correct snapshot number from array
+        snap_redshift=np.float64(snap_redshifts[index])
     print(f'\n--- Target Redshift: {target_redshift} ---\nSnapshot Number Selected: {snap_num}\nSnapshot True Redshift: {snap_redshift}\nRedshift Difference: {np.abs(snap_redshift-target_redshift)/target_redshift*100}%') #Print % error on target vs snapshot redshift
     return snap_num, snap_redshift

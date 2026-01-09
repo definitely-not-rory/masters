@@ -39,6 +39,7 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         snap_redshifts=np.array(snap_redshifts).astype(np.float64)
         if target_redshift==0: #If requested redshift is z=0, use last possible snapshot
             snap_num=snap_nums[-1]
+            snap_redshift=np.float64(snap_redshifts[-1])
             print(f'\nTarget Redshift: 0, Using Final Snapshot ({snap_num})')
         else:
             snap_num,snap_redshift=get_snap_num(halo,target_redshift)
@@ -205,6 +206,13 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
     print(f'\n{halo} Snapshot {snap_num} Raw Data Import Complete')
 
 def get_mass_density_data(halo,**kwargs):
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')
+
     if 'snap_num' not in kwargs:
         if 'redshift' in kwargs:
             target_redshift=kwargs['redshift']
@@ -214,9 +222,6 @@ def get_mass_density_data(halo,**kwargs):
     else:
         snap_num=kwargs['snap_num']
         snap_redshift=get_redshift(halo,snap_num)
-
-    halo_pos=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
-    redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
 
     type_directories=['gas','dm','stars']
     params=[['pos','mass'],['pos','mass'],['pos','mass']]
@@ -231,10 +236,17 @@ def get_mass_density_data(halo,**kwargs):
 
         if os.path.exists(f'halos/{halo}/{snap_num}/raw/{matter_type}/pos.npy')!=True or os.path.exists(f'halos/{halo}/{snap_num}/raw/{matter_type}/mass.npy')!=True:
             print(f'\nSnapshot {snap_num} {type_name} Raw Data Incomplete')
-            get_raw_data(halo,snap_num=snap_num)
+            if 'all_plots' in kwargs: #Checks if override for all plots is enabled
+                if kwargs['all_plots']==True:
+                    get_raw_data(halo,redshift=target_redshift,all_plots=True)
+                else:
+                    get_raw_data(halo,redshift=target_redshift)
         else:
             print(f'\nSnapshot {snap_num} {type_name} raw data located')
         
+        halo_pos=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
+        redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
+
         type_data={param:read_raw_file(halo,matter_type,param,snap_num=snap_num) for param in to_load}
         
         loaded_data[matter_type]=type_data
@@ -357,7 +369,206 @@ def get_mass_density_data(halo,**kwargs):
             plot.radial_mass_density(halo,snap_num=snap_num)
 
             
+def get_gas_only_data(halo,**kwargs):    
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')
+
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)  
+
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
+
+    to_load=['gmet','mass','nh','gz']
+    loaded_data={}
+    ran_get_raw=False
+    
+    for param in to_load:
+        if os.path.exists(f'halos/{halo}/{snap_num}/raw/gas/{param}.npy')!=True:
+            print(f'\nSnapshot {snap_num} {param} Raw Data Incomplete')
+            if 'all_plots' in kwargs: #Checks if override for all plots is enabled
+                if kwargs['all_plots']==True:
+                    get_raw_data(halo,bin_num=bin_num,redshift=target_redshift,all_plots=True)
+                else:
+                    get_raw_data(halo,bin_num=bin_num,redshift=target_redshift)
+        else:
+            print(f'\nSnapshot {snap_num} {param} raw data located')
             
+        loaded_data[param]=read_raw_file(halo,'gas',param,snap_num=snap_num)
+        
+    loaded_data['halo_r200']=read_subfind_params(halo,snap_num=snap_num)['halo_r200']  
+
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned')!=True:
+        if 'all_plots' in kwargs: #Checks if override for all plots is enabled
+                if kwargs['all_plots']==True:
+                    get_mass_density_data(halo,bin_num=bin_num,redshift=target_redshift,all_plots=True)
+                else:
+                    get_mass_density_data(halo,bin_num=bin_num,redshift=target_redshift)
+
+    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
+    loaded_data['total_mass']=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/gas.npy')
+
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')!=True:
+        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')
+
+    req_densities=['total_mass','hydrogen_mass','nH_mass','nH_col']
+    current_densities=[file[:-4] for file in os.listdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')]
+
+    if set(req_densities).issubset(current_densities)!=True:
+        np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/total_mass.npy',loaded_data['total_mass'])
+
+        extents=calc.get_extent(loaded_data['rel_pos'])
+        print(f'\nSpatial extent calculated')
+            
+        bin_widths=[extents[dimension]['range'].to_value(units.cm)/bin_num for dimension in extents]
+        print(f'\nBin widths calculated')
+
+        plane_indexes=[[0,1],[0,2],[1,2]]
+        plane_names=['xy','xz','yz']
+
+        cm_rel_pos=loaded_data['rel_pos'].to_value(units.cm)
+        g_mass=loaded_data['mass'].to_value(units.g)
+        H_mass_frac=loaded_data['gmet'][:,0]
+        nH_mass_frac=loaded_data['nh']
+        
+        proj_densities={'hydrogen_mass':{},'nH_mass':{},'nH_col':{}}
+
+        for plane in plane_indexes:
+            plane_name=plane_names[plane_indexes.index(plane)]
+            
+            binned_hydrogen_mass=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass*H_mass_frac,bins=[bin_num,bin_num],statistic='sum').statistic
+            binned_nH_mass=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass*H_mass_frac*nH_mass_frac,bins=[bin_num,bin_num],statistic='sum').statistic
+            binned_nH_col=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass*H_mass_frac*nH_mass_frac/mass_H_atom,bins=[bin_num,bin_num],statistic='sum').statistic
+
+            bin_area=bin_widths[plane[0]]*bin_widths[plane[1]]
+
+            hydrogen_mass_density=binned_hydrogen_mass/bin_area
+            nH_mass_density=binned_nH_mass/bin_area
+            nH_col_density=binned_nH_col/bin_area
+
+            proj_densities['hydrogen_mass'][plane_name]=hydrogen_mass_density
+            proj_densities['nH_mass'][plane_name]=nH_mass_density
+            proj_densities['nH_col'][plane_name]=nH_col_density
+        
+        for density in proj_densities:
+            save_data=[proj_densities[density]['xy'],proj_densities[density]['xz'],proj_densities[density]['yz']]
+            np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy',save_data)
+    else:
+        print('Gas Density Files Located')
+
+    if 'plot_gas_dens' in kwargs: #Detects if plots are enabled
+        if kwargs['plot_gas_dens']==True:
+            plot.proj_gas_densities(halo,bin_num,snap_num=snap_num) #Generates gas density plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.proj_gas_densities(halo,bin_num,snap_num=snap_num)
+
+    if os.path.exists(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True:
+        plane_indexes=[[0,1],[0,2],[1,2]]
+        plane_names=['xy','xz','yz']
+
+        rel_pos=loaded_data['rel_pos']
+        metallicity=loaded_data['gz']/z_sol
+        mass=loaded_data['mass']
+
+        total_mass=np.sum(mass)
+
+        mean_metallicties={}
+
+        for plane in plane_indexes:
+            plane_name=plane_names[plane_indexes.index(plane)]
+            mean_metallicties[plane_name]={}
+
+            binned_masses=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],mass,bins=[bin_num,bin_num],statistic='sum')
+
+            bin_grid=np.meshgrid((binned_masses.x_edge[:-1]+binned_masses.x_edge[1:])/2,(binned_masses.y_edge[:-1]+binned_masses.y_edge[1:])/2)
+            bin_radii=np.sqrt(bin_grid[0]**2+bin_grid[1]**2)
+            mean_metallicties[plane_name]['bin_radii']=bin_radii
+
+            bin_masses=binned_masses.statistic
+
+            weighted_metallicity=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],metallicity*mass,bins=[bin_num,bin_num],statistic='sum').statistic
+            weighted_mean_metallicity=np.divide(weighted_metallicity,bin_masses)
+            mean_metallicties[plane_name]['mean_gz']=weighted_mean_metallicity
+
+        to_save=['mean_gz','bin_radii']
+        save_data=np.array([[mean_metallicties['xy'][param],mean_metallicties['xz'][param],mean_metallicties['yz'][param]] for param in to_save])
+        np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy',save_data[0])
+        np.save(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy',save_data[1])
+
+    if 'plot_mean_gz' in kwargs: #Detects if plots are enabled
+        if kwargs['plot_mean_gz']==True:
+            plot.weighted_mean_gz(halo,bin_num,snap_num=snap_num) #Generates gas density plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.weighted_mean_gz(halo,bin_num,snap_num=snap_num)
+
+    if os.path.isdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')!=True:
+        os.mkdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')   
+    
+    obj_types=['DLA','subDLA','LymanLimit','lo_z_DLA','lo_z_subDLA','lo_z_LymanLimit','lo_z']
+    current_masks=[file[:-4] for file in os.listdir(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')]
+
+    if set(obj_types).issubset(current_masks)!=True:
+        nH_col=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
+        mean_gz=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
+        
+        masks={'DLA':np.log10(nH_col) >20.3,'subDLA': (20.3>np.log10(nH_col)) & (np.log10(nH_col) >19),'LymanLimit': (19>np.log10(nH_col)) & (np.log10(nH_col) >17.2)}
+        
+        lo_z_mask=np.log10(mean_gz)<-3
+        lo_z_nH_col=np.ma.masked_where(~lo_z_mask,nH_col)
+        lo_z_mean_gz=np.ma.masked_where(~lo_z_mask,mean_gz)
+        
+        np.savez(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z.npz', nH_col_data=lo_z_nH_col.data, nH_col_mask=lo_z_nH_col.mask, mean_gz_data=lo_z_mean_gz.data, mean_gz_mask=lo_z_mean_gz.mask)
+
+
+        for mask in masks:
+            masked_nH_col=np.ma.masked_where(~masks[mask],nH_col)
+            masked_mean_gz=np.ma.masked_where(~masks[mask],mean_gz)
+
+            np.savez(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz', nH_col_data=masked_nH_col.data, nH_col_mask=masked_nH_col.mask, mean_gz_data=masked_mean_gz.data, mean_gz_mask=masked_mean_gz.mask)
+
+            lo_z_masked_nH_col=np.ma.masked_where(~lo_z_mask,masked_nH_col)
+            lo_z_masked_mean_gz=np.ma.masked_where(~lo_z_mask,masked_mean_gz)
+
+            np.savez(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z_{mask}.npz', nH_col_data=lo_z_masked_nH_col.data, nH_col_mask=lo_z_masked_nH_col.mask, mean_gz_data=lo_z_masked_mean_gz.data, mean_gz_mask=lo_z_masked_mean_gz.mask)
+    else:
+        print('Masked Files Located')
+    if 'plot_scatter' in kwargs: #Detects if plots are enabled
+        if kwargs['plot_scatter']==True:
+            plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num) #Generates gas density plot
+    elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if kwargs['all_plots']==True:
+            plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num)
+        
+
+
+    
+
+
+
+
+
+
+
+    
+
+        
+    
+    
             
                 
     

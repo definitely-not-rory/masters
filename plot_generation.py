@@ -227,6 +227,238 @@ def radial_mass_density(halo,**kwargs):
     plt.title(display_halo+', $z=$'+str(display_redshift))
     plt.show()
 
+def proj_gas_densities(halo,bin_num,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    if 'dens_only' in kwargs:
+        req_dens=[kwargs['dens_only']]
+    else:
+        req_dens=['total_mass','hydrogen_mass','nH_col']
+
+    dens_plot_info={'total_mass':{'cmap':'plasma','title':f'{display_halo} Total Gas, z =${display_redshift}$, {bin_num} bins','cbar_label':'$log_{10}($Projected Density$)$ ($g/cm^2$)'},'hydrogen_mass':{'cmap':'viridis','title':f'{display_halo} Hydrogen Mass Fraction, z =${display_redshift}$, {bin_num} bins','cbar_label':'$log_{10}($Projected Density$)$ ($g/cm^2$)'},'nH_col':{'cmap':'magma','title':f'{display_halo} Neutral Hydrogen Fraction, z =${display_redshift}$, {bin_num} bins','cbar_label':'$log_{10}($Projected Column Density$)$ ($n_{H_1^1}/cm^2$)'}}
+
+    fig_gashist,ax_gashist=plt.subplots(len(req_dens),3,figsize=(15,15),constrained_layout=True)
+    
+    planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
+
+    for density in req_dens:
+        loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy')[planes[plane]['index']]for plane in planes}
+        loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
         
+        vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
+        vmax=np.log10(np.max([loaded_data[plane]for plane in planes]))
+
+        extents=calc.get_extent(loaded_data['rel_pos'])
+        plot_extents={plane:[extents[planes[plane]['axes'][0]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][0]]['max'].to_value(units.kpc), extents[planes[plane]['axes'][1]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][1]]['max'].to_value(units.kpc)] for plane in planes}
+
+        row_index=req_dens.index(density)
+
+        imshows=[ax_gashist[row_index][planes[plane]['index']].imshow(np.log10(loaded_data[plane]),extent=plot_extents[plane],vmin=vmin,vmax=vmax,cmap=dens_plot_info[density]['cmap'],aspect='equal') for plane in planes]
+        for plane in planes:
+            ax_gashist[row_index][planes[plane]['index']].set_xlabel(planes[plane]['x_label'])
+            ax_gashist[row_index][planes[plane]['index']].set_ylabel(planes[plane]['y_label'])
+            if planes[plane]['index']==1:
+                ax_gashist[row_index][planes[plane]['index']].set_title(dens_plot_info[density]['title'],fontsize=16,pad=20)
         
+        colourbar=fig_gashist.colorbar(imshows[-1],ax=ax_gashist[row_index],shrink=.75)
+        colourbar.set_label(dens_plot_info[density]['cbar_label'])
+        
+        for ax in ax_gashist[row_index]:
+            ax.set_aspect('equal', adjustable='box')
+            
+            ax.set_box_aspect(1.0)
+        
+            ax.xaxis.label.set_size(12)
+            ax.yaxis.label.set_size(12)
+            ax.tick_params(labelsize=10)
+
+    plt.show()
+
+def weighted_mean_gz(halo,bin_num,**kwargs): 
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    fig_gzhist,ax_gzhist=plt.subplots(1,3,figsize=(15,15),constrained_layout=True)
+    
+    planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
+
+    loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']]for plane in planes}
+    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
+    
+    all_planes_data=np.array([loaded_data['xy'],loaded_data['xz'],loaded_data['yz']])
+    vmin=np.log10(np.nanmin(all_planes_data)) 
+    vmax=np.log10(np.nanmax(all_planes_data))
+
+    extents=calc.get_extent(loaded_data['rel_pos'])
+    plot_extents={plane:[extents[planes[plane]['axes'][0]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][0]]['max'].to_value(units.kpc), extents[planes[plane]['axes'][1]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][1]]['max'].to_value(units.kpc)] for plane in planes}
+
+    imshows=[ax_gzhist[planes[plane]['index']].imshow(np.log10(loaded_data[plane]),extent=plot_extents[plane],vmin=vmin,vmax=vmax,cmap='plasma',aspect='equal') for plane in planes]
+
+    for plane in planes:
+            ax_gzhist[planes[plane]['index']].set_xlabel(planes[plane]['x_label'])
+            ax_gzhist[planes[plane]['index']].set_ylabel(planes[plane]['y_label'])
+            if planes[plane]['index']==1:
+                ax_gzhist[planes[plane]['index']].set_title(f'{display_halo} Mass-Weighted Mean Metallicity, z =${display_redshift}$, {bin_num} bins',fontsize=16,pad=20)
+        
+    colourbar=fig_gzhist.colorbar(imshows[-1],ax=ax_gzhist,shrink=.25)
+    colourbar.set_label('$log_{10}($Mass-Weighted Mean Solar-Relative Metallicity$)$ ($Z_\odot$)')
+        
+    for ax in ax_gzhist:
+        ax.set_aspect('equal', adjustable='box')
+        
+        ax.set_box_aspect(1.0)
+    
+        ax.xaxis.label.set_size(12)
+        ax.yaxis.label.set_size(12)
+        ax.tick_params(labelsize=10)
+
+    plt.show()
+
+def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
+
+    if plane not in planes:
+        sys.exit('Please provide a cartesian plane (\"ab\")')
+
+    halo_r200=read_subfind_params(halo,snap_num=snap_num)['halo_r200'].value
+    
+    nH_col=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')[planes[plane]['index']].flatten()
+    mean_gz=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']].flatten()
+    bin_radii=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')[planes[plane]['index']].flatten()/halo_r200
+    
+    masked_data={'DLA':{'param':'mean_gz'},'subDLA':{'param':'mean_gz'},'LymanLimit':{'param':'mean_gz'},'lo_z':{'param':'nH_col'}}
+    
+    for mask in masked_data:
+        loaded = np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz')
+        
+        masked_data[mask]['data'] = np.ma.masked_array(loaded[f'{masked_data[mask]["param"]}_data'], mask=loaded[f'{masked_data[mask]["param"]}_mask'])
+
+    lo_z_nH_col=masked_data['lo_z']['data'][planes[plane]['index']].compressed()
+    DLA_mean_gz=masked_data['DLA']['data'][planes[plane]['index']].compressed()
+    subDLA_mean_gz=masked_data['subDLA']['data'][planes[plane]['index']].compressed()
+    LymanLimit_mean_gz=masked_data['LymanLimit']['data'][planes[plane]['index']].compressed()
+
+    fig_scatter, ax_scatter=plt.subplots(figsize=(15,12))
+
+    scatter=ax_scatter.scatter(nH_col,mean_gz,marker='x',c=bin_radii,cmap='plasma_r',s=2,alpha=.2,zorder=10)
+
+    plt.xlabel(f'Pixel Projected ${plane}$ Planar Number Density ($H_1^1/cm^2$)',fontsize=14)
+    plt.ylabel('Solar-Relative Pixel-Mass-Weighted Mean Metallicity ($Z_\odot$)',fontsize=14)
+    ax_scatter.tick_params(labelsize=12)
+
+    scatter_colourbar=fig_scatter.colorbar(scatter, ax=ax_scatter,location='left')
+    scatter_colourbar.solids.set_alpha(1)
+    scatter_colourbar.ax.tick_params(labelsize=12)
+    scatter_colourbar.set_label('$R_{200_{crit}}$-Normalised Radial Distance From Centre Of FoF Group ($R_{200_{crit}}$)',fontsize=14)
+
+    xlims=[np.float64(10**10),np.float64(10**22)]
+    ylims=[np.float64(10**-7),np.float64(10**-2)]
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.xlim(xlims)
+    plt.ylim(ylims)
+
+    ax_scatter.axvline(np.float64(10**20.3),c='r',ls='dashed')
+    ax_scatter.fill_betweenx(np.array([10**-8,10]),np.float64(10**20.3),np.float64(10**22),color='r',alpha=.2)
+    ax_scatter.text(np.float64(0.6*10**21),np.float64(10**-5),'DLA',c='r',rotation=45,fontsize=18)
+
+    ax_scatter.axvline(10**19,c='b',ls='dashed')
+    ax_scatter.fill_betweenx(np.array([10**-8,10]),np.float64(10**19),np.float64(10**20.3),color='b',alpha=.2)
+    ax_scatter.text(np.float64(1.2*10**19),np.float64(10**-5),'Sub-DLA',c='b',rotation=45,fontsize=18)
+    
+    ax_scatter.axvline(10**17.2,c='g',ls='dashed')
+    ax_scatter.fill_betweenx(np.array([10**-8,10]),np.float64(10**17.2),np.float64(10**19),color='g',alpha=.2)
+    ax_scatter.text(np.float64(2*10**17),np.float64(10**-5),'Lyman Limit',c='g',rotation=45,fontsize=18)
+
+    ax_scatter.axhline(10**-3,color='blueviolet',ls='dashed',lw=2)
+    ax_scatter.fill_between([np.float64(10**9),np.float64(10**23)],np.float64(10**-3),np.float64(10**-1),hatch='/',edgecolor='grey',facecolor='silver')
+    ax_scatter.text(np.float64(0.8*10**16),np.float64(1.1*10**-3),'Low Metallicity Threshold, $Z \leq 10^{-3}Z_{\odot}$',fontsize=18,color='blueviolet')
+
+    left,bottom,width,height=ax_scatter.get_position().bounds
+
+    axis_bins=100
+
+    ax_projdenshist=fig_scatter.add_axes([left,bottom+height,width,height/4],sharex=ax_scatter)
+    
+    plt.hist(nH_col,bins=np.logspace(np.log10(xlims[0]),np.log10(xlims[1]),axis_bins),zorder=10,color='white',edgecolor='black',log=True)
+    plt.hist(lo_z_nH_col,bins=np.logspace(np.log10(xlims[0]),np.log10(xlims[1]),axis_bins),zorder=11,color='blueviolet',edgecolor='purple',alpha=.5,log=True)
+    
+    plt.yscale('log')
+    plt.ylim([0,np.float64(10**5)])
+    plt.title(f'{display_halo} {plane} Projection, z =${display_redshift}$, {bin_num} bins',fontsize=16,pad=20)
+
+    ax_projdenshist.tick_params(labelbottom=False,labelleft=False,labelright=True,labelsize=12)
+    ax_projdenshist.yaxis.tick_right()
+    ax_projdenshist.set_ylabel('Number Density',fontsize=14)
+
+    ax_projdenshist.axvline(np.float64(10**20.3),c='r',ls='dashed',zorder=11)
+    ax_projdenshist.fill_betweenx([np.float64(0),np.float64(10**6)],np.float64(10**20.3),np.float64(10**22),color='r',alpha=.2)
+
+    ax_projdenshist.axvline(10**19,c='b',ls='dashed',zorder=11)
+    ax_projdenshist.fill_betweenx([np.float64(0),np.float64(10**6)],np.float64(10**19),np.float64(10**20.3),color='b',alpha=.2)
+
+    ax_projdenshist.axvline(10**17.2,c='g',ls='dashed',zorder=11)
+    ax_projdenshist.fill_betweenx([np.float64(0),np.float64(10**6)],np.float64(10**17.2),np.float64(10**19),color='g',alpha=.2,zorder=1)
+
+
+    ax_gzhist=fig_scatter.add_axes([left+width,bottom,width/4,height],sharey=ax_scatter)
+    plt.hist(mean_gz,bins=np.logspace(np.log10(ylims[0]),np.log10(ylims[1]),axis_bins),orientation='horizontal',color='white',edgecolor='black',log=True)
+    
+    plt.hist(subDLA_mean_gz,bins=np.logspace(np.log10(ylims[0]),np.log10(ylims[1]),axis_bins),orientation='horizontal',color='blue',edgecolor='cyan',alpha=.6,log=True,lw=2)
+    plt.hist(LymanLimit_mean_gz,bins=np.logspace(np.log10(ylims[0]),np.log10(ylims[1]),axis_bins),orientation='horizontal',color='green',edgecolor='springgreen',alpha=.5,log=True,lw=2)
+    plt.hist(DLA_mean_gz,bins=np.logspace(np.log10(ylims[0]),np.log10(ylims[1]),axis_bins),orientation='horizontal',color='red',edgecolor='orangered',alpha=.4,log=True,lw=2)
+
+    ax_gzhist.axhline(10**-3,color='blueviolet',ls='dashed',lw=2)
+    ax_gzhist.fill_between([np.float64(0),np.float64(10**6)],np.float64(10**-3),np.float64(10**-1),hatch='/',edgecolor='grey',facecolor='silver',zorder=0)
+    ax_gzhist.set_xlim([0,np.float64(3*10**4)])
+    ax_gzhist.set_xscale('log')
+
+    ax_gzhist.tick_params(labelleft=False,labelbottom=False,labeltop=True,labelsize=12)
+    ax_gzhist.xaxis.tick_top()
+    ax_gzhist.set_xlabel('Number Density',fontsize=14)
+    gzhist_labels=ax_gzhist.get_xticklabels()
+    gzhist_labels[0].set_visible(False)
+
+    plt.show()
+
+
+    
+    
+
+
+
 
