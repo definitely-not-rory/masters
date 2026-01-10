@@ -352,7 +352,7 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
     planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
 
     if plane not in planes:
-        sys.exit('Please provide a cartesian plane (\"ab\")')
+        sys.exit('Please provide a cartesian plane (\"plane=ab\")')
 
     halo_r200=read_subfind_params(halo,snap_num=snap_num)['halo_r200'].value
     
@@ -454,11 +454,3 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
     gzhist_labels[0].set_visible(False)
 
     plt.show()
-
-
-    
-    
-
-
-
-

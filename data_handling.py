@@ -401,9 +401,9 @@ def get_gas_only_data(halo,**kwargs):
             print(f'\nSnapshot {snap_num} {param} Raw Data Incomplete')
             if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
-                    get_raw_data(halo,bin_num=bin_num,redshift=target_redshift,all_plots=True)
+                    get_raw_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True)
                 else:
-                    get_raw_data(halo,bin_num=bin_num,redshift=target_redshift)
+                    get_raw_data(halo,bin_num=bin_num,snap_num=snap_num)
         else:
             print(f'\nSnapshot {snap_num} {param} raw data located')
             
