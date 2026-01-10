@@ -3,8 +3,8 @@ from halo_readers import get_redshift, get_snap_num
 from npy_data_readers import read_raw_file, read_subfind_params
 import processing as calc
 
-def dz_snapshot(halo,snap_num,**redshifts):
-    snap_nums,snap_redshifts=np.float64(np.load(f'halos/{halo}/redshifts.npy'))
+def dz_snapshot(halo,snap_num,**redshifts):   
+    snap_nums,snap_redshifts=np.float64(np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy'))
 
     dz=np.abs(np.diff(snap_redshifts))
 
@@ -62,6 +62,13 @@ def dz_snapshot(halo,snap_num,**redshifts):
 
         z_snap_num.indicate_inset_zoom(zoomed,edgecolor="black",alpha=1)
 
+        if os.path.isdir(f'figures/{halo}/dz_snapshot/targets')!=True:
+            os.makedirs(f'figures/{halo}/dz_snapshot/targets')
+        
+        plt.savefig(f'figures/{halo}/dz_snapshot/targets/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+    else:
+        plt.savefig(f'figures/{halo}/dz_snapshot/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
     plt.show()
 
 def fof_scatter(halo,**kwargs):
@@ -75,9 +82,9 @@ def fof_scatter(halo,**kwargs):
         snap_num=kwargs['snap_num']
         snap_redshift=get_redshift(halo,snap_num)
 
-    sf_positions=np.load(f'halos/{halo}/{snap_num}/subfind/fof_positions.npy')*units.Mpc
+    sf_positions=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_positions.npy')*units.Mpc
     print('\nSubfind Position Data Imported')
-    sf_masses=np.load(f'halos/{halo}/{snap_num}/subfind/fof_masses.npy')*10**10*units.M_sun
+    sf_masses=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_masses.npy')*10**10*units.M_sun
     print('Subfind Mass Data Imported')
     
     fig_fofscatter,ax_fofscatter=plt.subplots(1,3,figsize=(15,15),constrained_layout=True)
@@ -120,8 +127,9 @@ def fof_scatter(halo,**kwargs):
             ax.yaxis.label.set_size(12)
             ax.tick_params(labelsize=10)
 
-    plt.show()
+    plt.savefig(f'figures/{halo}/fof_scatter/{snap_num}.png',format="png",dpi=250,bbox_inches='tight')
 
+    plt.show()
 
 def proj_mass_density(halo,bin_num,**kwargs):
     if 'snap_num' not in kwargs:
@@ -149,7 +157,7 @@ def proj_mass_density(halo,bin_num,**kwargs):
     planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
 
     for matter_type in req_types:
-        loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')[planes[plane]['index']]for plane in planes}
+        loaded_data={f'{plane}':np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')[planes[plane]['index']]for plane in planes}
         loaded_data['rel_pos']=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num)
         
         vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
@@ -179,6 +187,8 @@ def proj_mass_density(halo,bin_num,**kwargs):
             ax.yaxis.label.set_size(12)
             ax.tick_params(labelsize=10)
 
+    plt.savefig(f'figures/{halo}/{bin_num}/proj_mass_density/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
     plt.show()
 
 def radial_mass_density(halo,**kwargs):
@@ -207,7 +217,7 @@ def radial_mass_density(halo,**kwargs):
     fig_radialdensity, ax_radialdensity = plt.subplots()
 
     for matter_type in req_types:
-        loaded_data=np.load(f'halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')
+        loaded_data=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')
         
         bin_centres=loaded_data[0]
         densities=loaded_data[1]
@@ -225,6 +235,9 @@ def radial_mass_density(halo,**kwargs):
     plt.xlim(left=0.05)
     plt.ylim(top=10**-22)
     plt.title(display_halo+', $z=$'+str(display_redshift))
+
+    plt.savefig(f'figures/{halo}/radial_mass_density/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
     plt.show()
 
 def proj_gas_densities(halo,bin_num,**kwargs):
@@ -253,7 +266,7 @@ def proj_gas_densities(halo,bin_num,**kwargs):
     planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
 
     for density in req_dens:
-        loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy')[planes[plane]['index']]for plane in planes}
+        loaded_data={f'{plane}':np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy')[planes[plane]['index']]for plane in planes}
         loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
         
         vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
@@ -283,6 +296,8 @@ def proj_gas_densities(halo,bin_num,**kwargs):
             ax.yaxis.label.set_size(12)
             ax.tick_params(labelsize=10)
 
+    plt.savefig(f'figures/{halo}/{bin_num}/proj_gas_densities/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+    
     plt.show()
 
 def weighted_mean_gz(halo,bin_num,**kwargs): 
@@ -303,7 +318,7 @@ def weighted_mean_gz(halo,bin_num,**kwargs):
     
     planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
 
-    loaded_data={f'{plane}':np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']]for plane in planes}
+    loaded_data={f'{plane}':np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']]for plane in planes}
     loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
     
     all_planes_data=np.array([loaded_data['xy'],loaded_data['xz'],loaded_data['yz']])
@@ -333,6 +348,8 @@ def weighted_mean_gz(halo,bin_num,**kwargs):
         ax.yaxis.label.set_size(12)
         ax.tick_params(labelsize=10)
 
+    plt.savefig(f'figures/{halo}/{bin_num}/weighted_mean_gz/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
     plt.show()
 
 def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
@@ -356,14 +373,14 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
 
     halo_r200=read_subfind_params(halo,snap_num=snap_num)['halo_r200'].value
     
-    nH_col=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')[planes[plane]['index']].flatten()
-    mean_gz=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']].flatten()
-    bin_radii=np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')[planes[plane]['index']].flatten()/halo_r200
+    nH_col=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')[planes[plane]['index']].flatten()
+    mean_gz=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')[planes[plane]['index']].flatten()
+    bin_radii=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')[planes[plane]['index']].flatten()/halo_r200
     
     masked_data={'DLA':{'param':'mean_gz'},'subDLA':{'param':'mean_gz'},'LymanLimit':{'param':'mean_gz'},'lo_z':{'param':'nH_col'}}
     
     for mask in masked_data:
-        loaded = np.load(f'halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz')
+        loaded = np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz')
         
         masked_data[mask]['data'] = np.ma.masked_array(loaded[f'{masked_data[mask]["param"]}_data'], mask=loaded[f'{masked_data[mask]["param"]}_mask'])
 
@@ -452,5 +469,7 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
     ax_gzhist.set_xlabel('Number Density',fontsize=14)
     gzhist_labels=ax_gzhist.get_xticklabels()
     gzhist_labels[0].set_visible(False)
+
+    plt.savefig(f'figures/{halo}/{bin_num}/nH_col_gz_scatter/{snap_num}.png',format="png",dpi=250,bbox_inches='tight')
 
     plt.show()

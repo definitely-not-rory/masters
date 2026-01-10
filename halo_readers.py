@@ -26,9 +26,9 @@ def get_redshift(halo,snap_num,**kwargs): #Auxilliary function to load one indiv
     snap_num=str(snap_num) #Loads snapshot number integer input
     while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
         snap_num='0'+snap_num
-    if os.path.exists(f'halos/{halo}/redshifts.npy')==True: #Detects if redshift data file already exists for provided halo
+    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy')==True: #Detects if redshift data file already exists for provided halo
         print(f'\n Redshift file for {halo} located')
-        snap_nums,snap_redshifts=np.load(f'halos/{halo}/redshifts.npy') #Import existing redshift-snapshot data
+        snap_nums,snap_redshifts=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy') #Import existing redshift-snapshot data
         snap_index=snap_nums.tolist().index(snap_num) #Find index of requested snapshot
         redshift=np.float64(snap_redshifts[snap_index]) #Select redshift of desired snapshot
         print(f'\nSnapshot Number: {snap_num}\nSnapshot Redshift: {redshift}')
@@ -49,7 +49,7 @@ def get_redshift(halo,snap_num,**kwargs): #Auxilliary function to load one indiv
         return redshift
 
 def get_redshifts(halo,**kwargs): #Function to import and store the redshift data of all snapshots for a given halo
-    if os.path.exists(f'halos/{halo}/redshifts.npy')!=True: #Detects if redshift data file already exists for provided halo
+    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy')!=True: #Detects if redshift data file already exists for provided halo
         print(f'No redshift file located for {halo}, generating')
         if 'path' in kwargs: #Detects if alternate halo data directory has been provided
             loc=kwargs['path']
@@ -60,18 +60,18 @@ def get_redshifts(halo,**kwargs): #Function to import and store the redshift dat
         
         snap_redshifts=[get_redshift(halo,snap_num,loc=loc) for snap_num in snap_nums] #Pull all redshifts for available snapshots in chosen simulation directory
         save_data=np.array([snap_nums,snap_redshifts]) #Create 2D storage array for saving to external file
-        np.save(f'halos/{halo}/redshifts.npy',save_data) #Saves data to .npy file in halo's .npy storage directory
+        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy',save_data) #Saves data to .npy file in halo's .npy storage directory
     else: #If redshift file already exists
         print(f'{halo} Redshift File Located') 
-        snap_nums,snap_redshifts=np.load(f'halos/{halo}/redshifts.npy') #Load .npy stored data
+        snap_nums,snap_redshifts=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy') #Load .npy stored data
     return snap_nums, snap_redshifts
 
 def get_snap_num(halo,target_redshift):
-    if os.path.exists(f'halos/{halo}/redshifts.npy')!=True: #Detects if redshift data file already exists for provided halo
+    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy')!=True: #Detects if redshift data file already exists for provided halo
         print(f'\nNo redshift file for {halo}, generating...')
         snap_nums,snap_redshifts=get_redshifts(halo)
     else:
-        snap_nums,snap_redshifts=np.load(f'halos/{halo}/redshifts.npy')
+        snap_nums,snap_redshifts=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy')
         print(f'\n {halo} redshift file imported')
     
     if target_redshift==0:
