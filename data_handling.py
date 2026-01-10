@@ -177,16 +177,21 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
 
                 np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/pos.npy',dm_pos) #Saves DM position data to external .npy file
                 print(f'DM pos data saved externally')
-                
+
                 #Loads necessary parameters to determine constant DM particle mass
                 h=snapshot_data.header['HubbleParam'] #Import h and header DM particle mass
-                dm_particle_mass=snapshot_data.header['MassTable'][1]/h #Apply relevant conversion from header DM particle mass to 'real' mass
+                raw_dm_particle_mass=snapshot_data.header['MassTable'][1]
+                if raw_dm_particle_mass!=0:
+                    dm_particle_mass=raw_dm_particle_mass/h
+                else:
+                    nonzero_dm_particle_mass=read_raw_file('T1_Aug','dm','dm_params',snap_num=152)[1]
+                    dm_particle_mass=nonzero_dm_particle_mass/h #Apply relevant conversion from header DM particle mass to 'real' mass
                 print(f'\nDM Mass Parameters data loaded')
 
                 dm_params=np.array([h,dm_particle_mass]) #Stores all DM mass parameters in array for external file
                 np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/dm_params.npy',dm_params) #Saves DM parameters to external .npy file
                 print(f'DM Mass Parameters data saved externally')
-                
+
                 dm_mass=np.full_like(dm_pos[:,0],dm_particle_mass) #Creates 'normal' DM mass array using params and loaded snapshot data
                 print(f'\nDM mass data calculated')
 
@@ -222,6 +227,11 @@ def get_mass_density_data(halo,**kwargs):
     else:
         snap_num=kwargs['snap_num']
         snap_redshift=get_redshift(halo,snap_num)
+
+
+    snap_num=str(snap_num)
+    while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
 
     type_directories=['gas','dm','stars']
     params=[['pos','mass'],['pos','mass'],['pos','mass']]
@@ -386,6 +396,11 @@ def get_gas_only_data(halo,**kwargs):
     else:
         snap_num=kwargs['snap_num']
         snap_redshift=get_redshift(halo,snap_num)  
+
+    snap_num=str(snap_num)
+    while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
 
     if 'bins' in kwargs:
         bin_num=kwargs['bins']

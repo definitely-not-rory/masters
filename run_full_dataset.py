@@ -23,4 +23,4 @@ def run_halo(halo,bin_num,start_redshift,end_redshift):
     for snapshot in snapshots:
         data.get_gas_only_data(halo,snap_num=snapshot,all_plots=True)
 
-run_halo('T4_Aug',512,4,1)
+run_halo('halo8',512,4,1)

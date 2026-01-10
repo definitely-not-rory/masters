@@ -160,6 +160,10 @@ def proj_mass_density(halo,bin_num,**kwargs):
         loaded_data={f'{plane}':np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')[planes[plane]['index']]for plane in planes}
         loaded_data['rel_pos']=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num)
         
+        print(matter_type)
+        print(np.min(loaded_data['xy']))
+        print(np.max(loaded_data['xy']))
+
         vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
         vmax=np.log10(np.max([loaded_data[plane]for plane in planes]))
 
