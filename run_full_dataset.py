@@ -21,6 +21,8 @@ def run_halo(halo,bin_num,start_redshift,end_redshift):
         os.makedirs(f'figures/{halo}/{figure}',exist_ok=True)
 
     for snapshot in snapshots:
-        data.get_gas_only_data(halo,snap_num=snapshot,all_plots=True)
+        data.get_gas_only_data(halo,snap_num=snapshot)
+    
+    data.get_threshold_behaviour_data(halo,bin_num=bin_num,redshifts=[start_redshift,end_redshift])
 
 run_halo('halo8',512,4,1)

@@ -416,9 +416,11 @@ def get_gas_only_data(halo,**kwargs):
             print(f'\nSnapshot {snap_num} {param} Raw Data Incomplete')
             if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
+                    print('Getting raw data with plots')
                     get_raw_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True)
-                else:
-                    get_raw_data(halo,bin_num=bin_num,snap_num=snap_num)
+            else:
+                print('Getting raw data without plots')
+                get_raw_data(halo,bin_num=bin_num,snap_num=snap_num)
         else:
             print(f'\nSnapshot {snap_num} {param} raw data located')
             
@@ -430,8 +432,11 @@ def get_gas_only_data(halo,**kwargs):
         if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
                     get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True)
-                else:
-                    get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num)
+        else:
+            get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num)
+
+    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas/rel_pos.npy')!=True:
+        get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num)
 
     loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
     loaded_data['total_mass']=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/gas.npy')
@@ -491,7 +496,7 @@ def get_gas_only_data(halo,**kwargs):
         if kwargs['all_plots']==True:
             plot.proj_gas_densities(halo,bin_num,snap_num=snap_num)
 
-    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True:
+    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')!=True:
         plane_indexes=[[0,1],[0,2],[1,2]]
         plane_names=['xy','xz','yz']
 
@@ -514,15 +519,18 @@ def get_gas_only_data(halo,**kwargs):
             mean_metallicties[plane_name]['bin_radii']=bin_radii
 
             bin_masses=binned_masses.statistic
+            mean_metallicties[plane_name]['bin_masses']=bin_masses
 
             weighted_metallicity=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],metallicity*mass,bins=[bin_num,bin_num],statistic='sum').statistic
             weighted_mean_metallicity=np.divide(weighted_metallicity,bin_masses)
             mean_metallicties[plane_name]['mean_gz']=weighted_mean_metallicity
 
-        to_save=['mean_gz','bin_radii']
+        to_save=['mean_gz','bin_radii','bin_masses']
         save_data=np.array([[mean_metallicties['xy'][param],mean_metallicties['xz'][param],mean_metallicties['yz'][param]] for param in to_save])
+
         np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy',save_data[0])
         np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy',save_data[1])
+        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy',save_data[2])
 
     if 'plot_mean_gz' in kwargs: #Detects if plots are enabled
         if kwargs['plot_mean_gz']==True:
@@ -568,10 +576,132 @@ def get_gas_only_data(halo,**kwargs):
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
             plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num)
+
+
+def get_threshold_behaviour_data(halo, **kwargs):
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour') #Create halo directory if required
+        print(f'Created threshold vs time directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if 'snap_nums' not in kwargs:
+        if 'redshifts' in kwargs:
+            redshift_range=kwargs['redshifts']
+            start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+            end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+            snap_nums=[start_snap_num,end_snap_num]
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_nums=kwargs['snap_nums']
+        start_snap_redshift=get_redshift(halo,snap_nums[0])
+        end_snap_redshift=get_redshift(halo,snap_nums[1])
+        snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+    for snap_num in snap_nums:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_index=snap_nums.index(snap_num)
+            snap_num='0'+snap_num
+            snap_nums[snap_index]=snap_num
+
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
+
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs')!=True:
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs') #Create halo directory if required
+
+
+    snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
+
+    all_data={'redshifts':[],'DLA':{'xy':[],'xz':[],'yz':[]},'lo_z_DLA':{'xy':[],'xz':[],'yz':[]},'subDLA':{'xy':[],'xz':[],'yz':[]},'lo_z_subDLA':{'xy':[],'xz':[],'yz':[]},'LymanLimit':{'xy':[],'xz':[],'yz':[]},'lo_z_LymanLimit':{'xy':[],'xz':[],'yz':[]}}
+
+    for snap_num in snapshots:
+
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+        redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
+        all_data['redshifts'].append(redshift)
+        nH_col=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
+        mean_gz=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
+        bin_masses=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')
+        
+        planes=['xy','xz','yz']
+
+        for plane in planes:
+            plane_index=planes.index(plane)
+            
+            nH_col_proj=nH_col[plane_index]
+            mean_gz_proj=mean_gz[plane_index]
+            bin_masses_proj=bin_masses[plane_index]
+
+            masks={'DLA':np.log10(nH_col_proj) >20.3,'subDLA': (20.3>np.log10(nH_col_proj)) & (np.log10(nH_col_proj) >19),'LymanLimit': (19>np.log10(nH_col_proj)) & (np.log10(nH_col_proj) >17.2)}
+
+            total_mass=np.sum(bin_masses_proj.flatten())
+
+            lo_z_mask=np.log10(mean_gz_proj)<-3
+
+            for mask in masks:
+                masked_bin_masses=np.ma.masked_where(~masks[mask],bin_masses_proj)
+                lo_z_masked_bin_masses=np.ma.masked_where(~lo_z_mask,masked_bin_masses)
+
+                masked_mass=np.sum(masked_bin_masses.compressed())
+                lo_z_masked_mass=np.sum(lo_z_masked_bin_masses.compressed())
+
+                masked_mass_frac=masked_mass/total_mass
+                lo_z_masked_mass_frac=lo_z_masked_mass/total_mass
+
+                all_data[mask][plane].append(masked_mass_frac)
+                all_data[f'lo_z_{mask}'][plane].append(lo_z_masked_mass_frac)
+    
+    all_masks=['DLA','subDLA','LymanLimit','lo_z_DLA','lo_z_subDLA','lo_z_LymanLimit']
+
+    for mask in all_masks:
+        mask_data=np.array([all_data[mask]['xy'],all_data[mask]['xz'],all_data[mask]['yz']])
+        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs/{mask}.npy',mask_data)
+        
+    np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/redshifts.npy',all_data['redshifts'])
+    
+
+    
+
+    
+  
+                
+
+                
+
+              
+    
         
 
 
+
     
+        
+
+
+
 
 
 
