@@ -48,11 +48,15 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
 
     if 'plot_dz_snap' in kwargs: #Detects if plots are enabled
         if kwargs['plot_dz_snap']==True:
+            if os.path.isdir(f'figures/{halo}/dz_snapshot')!=True:
+                os.makedirs(f'figures/{halo}/dz_snapshot',exist_ok=True)
             if 'redshift' in kwargs:
                 plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshift) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
             else:
                 plot.dz_snapshot(halo,snap_num) #Generates dz vs snapshot plot without target redshift elements if snapshot number was used
     elif 'all_plots' in kwargs:
+        if os.path.isdir(f'figures/{halo}/dz_snapshot')!=True:
+                os.makedirs(f'figures/{halo}/dz_snapshot',exist_ok=True)
         if kwargs['all_plots']==True: #Checks if override for all plots is enabled
             if 'redshift' in kwargs:
                 plot.dz_snapshot(halo,snap_num,target_redshift=target_redshift,snap_redshift=snap_redshift) #Generates dz vs snapshot plot with target redshift elements if redshift was used instead of snapshot number
@@ -118,9 +122,13 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         print('\nFoF Subfind Data Located')
     
     if 'plot_fof_scatter' in kwargs: #Detects if plots are enabled
+        if os.path.isdir(f'figures/{halo}/fof_scatter')!=True:
+                os.makedirs(f'figures/{halo}/fof_scatter',exist_ok=True)
         if kwargs['plot_fof_scatter']==True:
             plot.fof_scatter(halo,snap_num=snap_num) #Generates FoF scatter plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
+        if os.path.isdir(f'figures/{halo}/fof_scatter')!=True:
+                os.makedirs(f'figures/{halo}/fof_scatter',exist_ok=True)
         if kwargs['all_plots']==True:
             plot.fof_scatter(halo,snap_num=snap_num)
 
@@ -346,9 +354,13 @@ def get_mass_density_data(halo,**kwargs):
 
     if 'plot_proj_dens' in kwargs: #Detects if plots are enabled
         if kwargs['plot_proj_dens']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/proj_mass_density')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/proj_mass_density',exist_ok=True)
             plot.proj_mass_density(halo,bin_num,snap_num=snap_num) #Generates g/cm^2 projected density plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/proj_mass_density')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/proj_mass_density',exist_ok=True)
             plot.proj_mass_density(halo,bin_num,snap_num=snap_num)
 
     if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density')!=True:
@@ -373,9 +385,13 @@ def get_mass_density_data(halo,**kwargs):
     
     if 'plot_rad_dens' in kwargs: #Detects if plots are enabled
         if kwargs['plot_rad_dens']==True:
+            if os.path.isdir(f'figures/{halo}/radial_mass_density')!=True:
+                os.makedirs(f'figures/{halo}/radial_mass_density',exist_ok=True)
             plot.radial_mass_density(halo,snap_num=snap_num) #Generates g/cm^2 radial density plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
+            if os.path.isdir(f'figures/{halo}/radial_mass_density')!=True:
+                os.makedirs(f'figures/{halo}/radial_mass_density',exist_ok=True)
             plot.radial_mass_density(halo,snap_num=snap_num)
 
             
@@ -491,9 +507,13 @@ def get_gas_only_data(halo,**kwargs):
 
     if 'plot_gas_dens' in kwargs: #Detects if plots are enabled
         if kwargs['plot_gas_dens']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/proj_gas_densities')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/proj_gas_densities',exist_ok=True)
             plot.proj_gas_densities(halo,bin_num,snap_num=snap_num) #Generates gas density plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/proj_gas_densities')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/proj_gas_densities',exist_ok=True)
             plot.proj_gas_densities(halo,bin_num,snap_num=snap_num)
 
     if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')!=True:
@@ -534,9 +554,13 @@ def get_gas_only_data(halo,**kwargs):
 
     if 'plot_mean_gz' in kwargs: #Detects if plots are enabled
         if kwargs['plot_mean_gz']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/weighted_mean_gz')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/weighted_mean_gz',exist_ok=True)
             plot.weighted_mean_gz(halo,bin_num,snap_num=snap_num) #Generates gas density plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/weighted_mean_gz')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/weighted_mean_gz',exist_ok=True)
             plot.weighted_mean_gz(halo,bin_num,snap_num=snap_num)
 
     if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')!=True:
@@ -572,9 +596,13 @@ def get_gas_only_data(halo,**kwargs):
         print('Masked Files Located')
     if 'plot_scatter' in kwargs: #Detects if plots are enabled
         if kwargs['plot_scatter']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/nH_col_gz_scatter/{snap_num}')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/nH_col_gz_scatter/{snap_num}',exist_ok=True)
             plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num) #Generates gas density plot
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if kwargs['all_plots']==True:
+            if os.path.isdir(f'figures/{halo}/{bin_num}/nH_col_gz_scatter/{snap_num}')!=True:
+                os.makedirs(f'figures/{halo}/{bin_num}/nH_col_gz_scatter/{snap_num}',exist_ok=True)
             plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num)
 
 
