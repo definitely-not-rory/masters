@@ -556,3 +556,91 @@ def threshold_mass_fracs(halo,bin_num,plane,**kwargs):
 
     plt.show()
 
+def contour_gas_hists(halo,bin_num,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    dens_plot_info={'cmap':'plasma','title':f'{display_halo} Total Gas'}
+
+    fig_gashist,ax_gashist=plt.subplots(1,3,figsize=(15,15),constrained_layout=True)
+    
+    planes={'xy':{'index':0,'axes':['x','y'],'x_label':'$x$ ($kpc$)','y_label':'$y$ ($kpc$)'},'xz':{'index':1,'axes':['x','z'],'x_label':'$x$ ($kpc$)','y_label':'$z$ ($kpc$)'},'yz':{'index':2,'axes':['y','z'],'x_label':'$y$ ($kpc$)','y_label':'$z$ ($kpc$)'}}
+    
+    loaded_data={f'{plane}':np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/total_mass.npy')[planes[plane]['index']]for plane in planes}
+    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
+
+    masks={'DLA':{'colour':'r','cmap':ListedColormap(np.array([[1,0,0,.6],[1,0,0,0]]))},'subDLA':{'colour':'b','cmap':ListedColormap(np.array([[0,0,1,.3],[0,0,1,0]]))},'LymanLimit':{'colour':'g','cmap':ListedColormap(np.array([[0,1,0,.3],[0,1,0,0]]))}}
+    
+    for mask in masks:
+        loaded = np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz') 
+        masks[mask]['data'] = np.ma.masked_array(loaded[f'nH_col_data'], mask=loaded[f'nH_col_mask'])
+
+        lo_z_loaded = np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z_{mask}.npz')
+        masks[mask]['lo_z_data'] = np.ma.masked_array(lo_z_loaded[f'nH_col_data'], mask=lo_z_loaded[f'nH_col_mask'])
+        
+    vmin=np.log10(np.min([np.min(loaded_data[plane][loaded_data[plane]!=0.0]) for plane in planes])) #Find minimum (excluding zeros) and maximum projected density values across projection axes to normalise colour bars to
+    vmax=np.log10(np.max([loaded_data[plane]for plane in planes]))
+
+    extents=calc.get_extent(loaded_data['rel_pos'])
+    plot_extents={plane:[extents[planes[plane]['axes'][0]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][0]]['max'].to_value(units.kpc), extents[planes[plane]['axes'][1]]['min'].to_value(units.kpc),extents[planes[plane]['axes'][1]]['max'].to_value(units.kpc)] for plane in planes}
+
+    imshows=[ax_gashist[planes[plane]['index']].imshow(np.log10(loaded_data[plane]),extent=plot_extents[plane],vmin=vmin,vmax=vmax,cmap=dens_plot_info['cmap'],aspect='equal') for plane in planes]
+    
+    LymanLimit_contours=[ax_gashist[planes[plane]['index']].contour(masks['LymanLimit']['data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors=masks['LymanLimit']['colour']) for plane in planes]
+    LymanLimit_fills=[ax_gashist[planes[plane]['index']].imshow(masks['LymanLimit']['data'][planes[plane]['index']].mask.astype(float),extent=plot_extents[plane],cmap=masks['LymanLimit']['cmap']) for plane in planes]
+    lo_z_LymanLimit_contours=[ax_gashist[planes[plane]['index']].contourf(masks['LymanLimit']['lo_z_data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0,0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors='none',hatches=['xxxx']) for plane in planes]
+    for contour in lo_z_LymanLimit_contours:
+        contour.set_edgecolor('blueviolet')
+    
+    subDLA_contours=[ax_gashist[planes[plane]['index']].contour(masks['subDLA']['data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors=masks['subDLA']['colour']) for plane in planes]
+    sub_DLA_fills=[ax_gashist[planes[plane]['index']].imshow(masks['subDLA']['data'][planes[plane]['index']].mask.astype(float),extent=plot_extents[plane],cmap=masks['subDLA']['cmap']) for plane in planes]
+    lo_z_subDLA_contours=[ax_gashist[planes[plane]['index']].contourf(masks['subDLA']['lo_z_data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0,0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors='none',hatches=['xxxx']) for plane in planes]
+    for contour in lo_z_subDLA_contours:
+        contour.set_edgecolor('blueviolet')
+    
+    DLA_contours=[ax_gashist[planes[plane]['index']].contour(masks['DLA']['data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors=masks['DLA']['colour']) for plane in planes]
+    DLA_fills=[ax_gashist[planes[plane]['index']].imshow(masks['DLA']['data'][planes[plane]['index']].mask.astype(float),extent=plot_extents[plane],cmap=masks['DLA']['cmap']) for plane in planes]
+    lo_z_DLA_contours=[ax_gashist[planes[plane]['index']].contourf(masks['DLA']['lo_z_data'][planes[plane]['index']][::-1, :].mask.astype(float),levels=[0,0.5],extent=plot_extents[plane],vmin=vmin,vmax=vmax,colors='none',hatches=['xxxx']) for plane in planes]
+    for contour in lo_z_DLA_contours:
+        contour.set_edgecolor('blueviolet')
+
+    for plane in planes:
+        ax_gashist[planes[plane]['index']].set_xlabel(planes[plane]['x_label'])
+        ax_gashist[planes[plane]['index']].set_ylabel(planes[plane]['y_label'])
+        if planes[plane]['index']==1:
+            ax_gashist[planes[plane]['index']].set_title(dens_plot_info['title'],fontsize=20,pad=20)
+    
+    colourbar=fig_gashist.colorbar(imshows[-1],ax=ax_gashist,shrink=.25)
+    colourbar.set_label('$log_{10}($Projected Density$)$ ($g/cm^2$)',fontsize=18)
+    colourbar.ax.tick_params(labelsize=16)
+    
+    for ax in ax_gashist:
+        ax.set_aspect('equal', adjustable='box')
+        
+        ax.set_aspect('equal', adjustable='box')
+        
+        ax.set_box_aspect(1.0)
+    
+        ax.xaxis.label.set_size(18)
+        ax.yaxis.label.set_size(18)
+
+        ax.yaxis.set_label_coords(-0.1, 0.5)
+
+        ax.tick_params(labelsize=16)
+
+    if os.path.isdir(f'figures/{halo}/{bin_num}/contour_gas_densities')!=True:
+        os.makedirs(f'figures/{halo}/{bin_num}/contour_gas_densities',exist_ok=True)
+
+    plt.savefig(f'figures/{halo}/{bin_num}/contour_gas_densities/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
+    
+    plt.show()
