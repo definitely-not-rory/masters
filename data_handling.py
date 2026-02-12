@@ -1,5 +1,5 @@
 from imports import *
-from halo_readers import get_halos, get_redshifts, get_snap_num, get_redshift
+from halo_readers import get_halos, get_redshifts, get_snap_num, get_redshift, get_snap_nums
 from npy_data_readers import read_raw_file, read_subfind_params
 import plot_generation as plot 
 import processing as calc  
@@ -711,7 +711,74 @@ def get_threshold_behaviour_data(halo, **kwargs):
     np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/redshifts.npy',all_data['redshifts'])
     
 
+def get_stellar_masses(halo, **kwargs):
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'halos/{halo}/stellar_masses')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/stellar_masses') #Create halo directory if required
+        print(f'Created stellar mass directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')
+
+    if 'snap_nums' not in kwargs:
+        if 'redshifts' in kwargs:
+            redshift_range=kwargs['redshifts']
+            start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+            end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+            snap_nums=[start_snap_num,end_snap_num]
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_nums=kwargs['snap_nums']
+        start_snap_redshift=get_redshift(halo,snap_nums[0])
+        end_snap_redshift=get_redshift(halo,snap_nums[1])
+        snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+    for snap_num in snap_nums:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_index=snap_nums.index(snap_num)
+            snap_num='0'+snap_num
+            snap_nums[snap_index]=snap_num
+
+    snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
+
+    total_stellar_masses=[]
+    redshifts=[]
+
+    for snap_num in snapshots:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
+        stellar_masses=read_raw_file(halo,'stars','mass',snap_num=snap_num)
+        total_stellar_mass=np.sum(stellar_masses)
+        total_stellar_masses.append(total_stellar_mass.value)
+
+        redshift=get_redshift(halo,snap_num)
+        redshifts.append(redshift)
     
+    total_stellar_masses=np.array(total_stellar_masses)
+    redshifts=np.array(redshifts)
+
+    np.save(f'halos/{halo}/stellar_masses/redshifts.npy',redshifts)
+    np.save(f'halos/{halo}/stellar_masses/stellar_masses.npy',total_stellar_masses)
+
+def get_properties_table(halo):
+    loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
+    suffix='/output/' #Suffix to ensure data from each snapshot is read
+    
+    final_snapshot=get_snap_nums(halo)[-1]
+
+    subfind_data = ar.gadget_subfind.load_subfind(final_snapshot, dir=loc + halo + suffix)
+       
 
     
   

@@ -509,7 +509,7 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
 
 def threshold_mass_fracs(halo,bin_num,plane,**kwargs):
     if os.path.isdir(f'figures/{halo}/{bin_num}/masked_vs_redshifts')!=True:
-        os.makedirs(f'figures/{halo}/{bin_num}/masked_vs_redshifts')
+        os.makedirs(f'figures/{halo}/{bin_num}/masked_vs_redshifts/mass_fracs')
 
     display_halo=halo.replace('_',' ')
 
@@ -552,7 +552,7 @@ def threshold_mass_fracs(halo,bin_num,plane,**kwargs):
     plt.xlabel('Redshift (z)',fontsize=18)
     plt.ylabel(r'Mass Fraction ($\frac{m_{px_{threshold}}}{M_{halo}}$)',fontsize=18)
 
-    plt.savefig(f'figures/{halo}/{bin_num}/masked_vs_redshifts/mass_fracs.pdf',format="pdf",dpi=250,bbox_inches='tight')
+    plt.savefig(f'figures/{halo}/{bin_num}/masked_vs_redshifts/mass_fracs/{plane}.pdf',format="pdf",dpi=250,bbox_inches='tight')
 
     plt.show()
 
@@ -643,4 +643,31 @@ def contour_gas_hists(halo,bin_num,**kwargs):
 
     plt.savefig(f'figures/{halo}/{bin_num}/contour_gas_densities/{snap_num}.pdf',format="pdf",dpi=250,bbox_inches='tight')
     
+    plt.show()
+
+
+def plot_stellar_masses(halo):
+    if os.path.isdir(f'figures/{halo}/stellar_masses')!=True:
+        os.makedirs(f'figures/{halo}/stellar_masses')
+
+    display_halo=halo.replace('_',' ')
+
+    redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
+    masses=np.load(f'halos/{halo}/stellar_masses/stellar_masses.npy')
+
+    fig_masses,ax_masses=plt.subplots()
+    
+    ax_masses.scatter(redshifts,masses,marker='x',c='r')
+
+    ax_masses.invert_xaxis()
+
+    ax_masses.xaxis.label.set_size(18)
+    ax_masses.yaxis.label.set_size(18)
+    ax_masses.tick_params(labelsize=18)
+    plt.title(f'{display_halo}',fontsize=20)
+    plt.xlabel('Redshift (z)',fontsize=18)
+    plt.ylabel(r'Total Stellar Mass ($M_{\odot}$)',fontsize=18)
+
+    plt.savefig(f'figures/{halo}/stellar_masses/stellar_masses.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
     plt.show()
