@@ -3,3 +3,6 @@ __pycache__/
 .ipynb_checkpoints/
 figures/
 halos/
+figures_weighted/
+figures_unweighted/
+figures_corrected/

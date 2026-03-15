@@ -429,7 +429,7 @@ def nH_col_gz_scatter(halo,bin_num,plane,**kwargs):
     scatter_colourbar.set_label('$R_{200_{crit}}$-Normalised Radial Distance From Centre Of FoF Group ($R_{200_{crit}}$)',fontsize=20)
 
     xlims=[np.float64(10**10),np.float64(10**22)]
-    ylims=[np.float64(10**-7),np.float64(10**-2)]
+    ylims=[np.float64(10**-7),np.float64(2)]
     plt.yscale('log')
     plt.xscale('log')
     plt.xlim(xlims)
@@ -646,28 +646,201 @@ def contour_gas_hists(halo,bin_num,**kwargs):
     plt.show()
 
 
-def plot_stellar_masses(halo):
-    if os.path.isdir(f'figures/{halo}/stellar_masses')!=True:
-        os.makedirs(f'figures/{halo}/stellar_masses')
-
-    display_halo=halo.replace('_',' ')
-
-    redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
-    masses=np.load(f'halos/{halo}/stellar_masses/stellar_masses.npy')
+def stellar_masses_redshift(halos):
+    if os.path.isdir(f'figures/all_halos/stellar_masses')!=True:
+        os.makedirs(f'figures/all_halos/stellar_masses')
 
     fig_masses,ax_masses=plt.subplots()
-    
-    ax_masses.scatter(redshifts,masses,marker='x',c='r')
+
+    colours=['r','b','g']
+
+    for halo in halos:
+        display_halo=halo.replace('_',' ')
+
+        redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
+        masses=np.load(f'halos/{halo}/stellar_masses/stellar_masses.npy')
+          
+        ax_masses.plot(redshifts,masses,c=colours[halos.index(halo)])
+        if halo=='halo8':
+            shift=0.4
+        else:
+            shift=0.6
+        plt.text(redshifts[0]+shift,masses[0],display_halo,fontsize=14,c=colours[halos.index(halo)])
 
     ax_masses.invert_xaxis()
 
     ax_masses.xaxis.label.set_size(18)
     ax_masses.yaxis.label.set_size(18)
     ax_masses.tick_params(labelsize=18)
-    plt.title(f'{display_halo}',fontsize=20)
+    plt.title(f'Total Halo Stellar Mass',fontsize=20)
     plt.xlabel('Redshift (z)',fontsize=18)
     plt.ylabel(r'Total Stellar Mass ($M_{\odot}$)',fontsize=18)
+    plt.xlim([4.7,0.9])
+    plt.yscale('log')
 
-    plt.savefig(f'figures/{halo}/stellar_masses/stellar_masses.pdf',format="pdf",dpi=250,bbox_inches='tight')
+    plt.savefig(f'figures/all_halos/stellar_masses/stellar_masses.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
+    plt.show()
+
+def properties_table(halos):
+    if os.path.isdir(f'figures/all_halos/properties')!=True:
+        os.makedirs(f'figures/all_halos/properties')
+    
+    params={'frc2':{'name':'$R_{200_{crit}}$','units':units.Mpc},'fmc2':{'name':'$M_{200_{crit}}$','units':10**10*units.M_sun},'smty':{'name':'$Masses$','units':10**10*units.M_sun},'sgmt':{'name':'Gas Metallicity','units':1/z_sol},'ssmt':{'name':'Stellar Metallicity','units':1/z_sol}}
+    
+    for halo in halos:
+        display_halo=halo.replace('_',' ')
+
+        halo_data=np.load(f'halos/{halo}/table_properties/table_data.npy',allow_pickle=True)[()]
+
+        print(halo)
+        
+        for param in params:
+            print(param)
+            print(halo_data[param]*params[param]['units'])
+
+def metallicity_radius(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    radii=read_raw_file(halo,'gas','radii',snap_num=snap_num)
+    metallicities=read_raw_file(halo,'gas','gz',snap_num=snap_num)
+    masses=read_raw_file(halo,'gas','mass',snap_num=snap_num)
+
+    fig_gzrad,ax_gzrad=plt.subplots()
+
+    scatter=ax_gzrad.scatter(radii,metallicities,marker='x',s=2,c=np.log(masses.value),cmap='magma_r')
+
+    colourbar=fig_gzrad.colorbar(scatter, ax=ax_gzrad,location='right',alpha=1)
+    colourbar.set_label('log(Gas Particle Mass)')
+
+    plt.yscale('log')
+    plt.xlabel('Radial Distance From Center ($Mpc$)')
+    plt.ylabel('Gas Particle Metallicity ($Z_\odot$)')
+
+    plt.show()
+
+def metallicities_redshift(halos):
+    if os.path.isdir(f'figures/all_halos/metallicities_redshift')!=True:
+        os.makedirs(f'figures/all_halos/metallicities_redshift')
+
+    fig_zs,ax_zs=plt.subplots()
+
+    colours=['r','b','g']
+
+    for halo in halos:
+        display_halo=halo.replace('_',' ')
+
+        redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
+        gas_zs=np.load(f'halos/{halo}/metallicity_behaviour/gas.npy')
+        star_zs=np.load(f'halos/{halo}/metallicity_behaviour/stars.npy')
+
+        print(gas_zs)
+          
+        ax_zs.plot(redshifts,gas_zs,c=colours[halos.index(halo)],linestyle='dashed')
+        ax_zs.plot(redshifts,star_zs,c=colours[halos.index(halo)],linestyle='dotted')
+        if halo=='halo8':
+            shift=0.4
+        else:
+            shift=0.6
+        plt.text(redshifts[0]+shift,gas_zs[0],f'{display_halo} Gas',fontsize=14,c=colours[halos.index(halo)])
+        plt.text(redshifts[0]+shift,star_zs[0],f'{display_halo} Stars',fontsize=14,c=colours[halos.index(halo)])
+
+    ax_zs.invert_xaxis()
+
+    ax_zs.xaxis.label.set_size(18)
+    ax_zs.yaxis.label.set_size(18)
+    ax_zs.tick_params(labelsize=18)
+    plt.title(f'Stellar and Gas Solar-Relative Metallicity',fontsize=20)
+    plt.xlabel('Redshift (z)',fontsize=18)
+    plt.ylabel(r'Metallicity ($Z_\odot$)',fontsize=18)
+    plt.xlim([4.7,0.9])
+
+    plt.savefig(f'figures/all_halos/metallicities_redshift/metallicities.pdf',format="pdf",dpi=250,bbox_inches='tight')
+
+    plt.show()
+
+
+def metallicity_radius(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)
+
+    display_redshift=np.round(snap_redshift,3)
+    display_halo=halo.replace('_',' ')
+
+    radii=read_raw_file(halo,'gas','radii',snap_num=snap_num)
+    metallicities=read_raw_file(halo,'gas','gz',snap_num=snap_num)
+    masses=read_raw_file(halo,'gas','mass',snap_num=snap_num)
+
+    fig_gzrad,ax_gzrad=plt.subplots()
+
+    scatter=ax_gzrad.scatter(radii,metallicities,marker='x',s=2,c=np.log(masses.value),cmap='magma_r')
+
+    colourbar=fig_gzrad.colorbar(scatter, ax=ax_gzrad,location='right',alpha=1)
+    colourbar.set_label('log(Gas Particle Mass)')
+
+    plt.yscale('log')
+    plt.xlabel('Radial Distance From Center ($Mpc$)')
+    plt.ylabel('Gas Particle Metallicity ($Z_\odot$)')
+
+    plt.show()
+
+def metallicities_stellar_masses(halo):
+    if os.path.isdir(f'figures/{halo}/metallicities_stellar_masses')!=True:
+        os.makedirs(f'figures/{halo}/metallicities_stellar_masses')
+
+    fig_z_mass,ax_z_mass=plt.subplots()
+
+    display_halo=halo.replace('_',' ')
+
+    redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
+    masses=np.load(f'halos/{halo}/stellar_masses/stellar_masses.npy')
+    gas_zs=np.load(f'halos/{halo}/metallicity_behaviour/gas.npy')
+    star_zs=np.load(f'halos/{halo}/metallicity_behaviour/stars.npy')
+
+    vmin=min(redshifts)
+    vmax=max(redshifts)
+          
+    
+    gas_line=ax_z_mass.plot(masses,gas_zs,linestyle='dashed',c='w',zorder=0)
+    gas_scatter=ax_z_mass.scatter(masses,gas_zs,c=redshifts,marker='x',cmap='seismic',vmin=vmin,vmax=vmax,zorder=1)
+
+    stars=ax_z_mass.twinx()
+    stars_line=stars.plot(masses,star_zs,linestyle='dotted',c='w',zorder=0)
+    stars_scatter=stars.scatter(masses,star_zs,c=redshifts,marker='d',cmap='seismic',vmin=vmin,vmax=vmax,zorder=1)
+
+    scatter_colourbar=fig_z_mass.colorbar(gas_scatter,ax=ax_z_mass,orientation='horizontal')    
+
+    ax_z_mass.xaxis.label.set_size(18)
+    ax_z_mass.yaxis.label.set_size(18)
+    ax_z_mass.tick_params(labelsize=18)
+    ax_z_mass.set_facecolor('lightgray')
+
+    ax_z_mass.set_xlabel('Stellar Mass ($M_\odot$)')
+    ax_z_mass.set_ylabel('Gas Metallicity ($Z_\odot$)')
+    stars.set_ylabel('Stellar Metallicity ($Z_\odot$)')
+
+    scatter_colourbar.set_label('Snapshot Redshift')
+
+    plt.title(f'{display_halo} Metallicities and Stellar Masses')
+
+    plt.savefig(f'figures//{halo}/metallicities_stellar_masses/metallicity_mass.pdf',format="pdf",dpi=250)
 
     plt.show()

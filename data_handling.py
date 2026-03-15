@@ -111,10 +111,12 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         halo_pos=sf_positions[0] #Main Halo Position (in Mpc)
         halo_mass=sf_masses[0] #Main Halo Mass (in 10^10 M_sol)
         halo_r200=subfind_data.data['frc2'][0] #Main Halo R_200_crit (in Mpc)
+        halo_gas_met=subfind_data.data['sgmt'][0]
+        halo_star_met=subfind_data.data['ssmt'][0]
 
         redshift=subfind_data.redshift #Retrieve snapshot redshift value from header
         
-        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200],dtype='object') #Create storage array for FoF Group 1 parameters
+        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200,halo_gas_met,halo_star_met],dtype='object') #Create storage array for FoF Group 1 parameters
         
         np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',saved_params) #Save FoF Group 1 parameters to external .npy file
         print('Subfind Halo Parameters Saved')
@@ -521,7 +523,10 @@ def get_gas_only_data(halo,**kwargs):
         plane_names=['xy','xz','yz']
 
         rel_pos=loaded_data['rel_pos']
-        metallicity=loaded_data['gz']/z_sol
+
+        raw_metallicity=loaded_data['gz']
+        metallicity=raw_metallicity/z_sol
+
         mass=loaded_data['mass']
 
         total_mass=np.sum(mass)
@@ -750,6 +755,9 @@ def get_stellar_masses(halo, **kwargs):
 
     snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
 
+    loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
+    suffix='/output/' #Suffix to ensure data from each snapshot is read
+
     total_stellar_masses=[]
     redshifts=[]
 
@@ -772,13 +780,106 @@ def get_stellar_masses(halo, **kwargs):
     np.save(f'halos/{halo}/stellar_masses/stellar_masses.npy',total_stellar_masses)
 
 def get_properties_table(halo):
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'halos/{halo}/table_properties')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/table_properties') #Create halo directory if required
+        print(f'Created stellar mass directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')
+
     loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
     suffix='/output/' #Suffix to ensure data from each snapshot is read
     
     final_snapshot=get_snap_nums(halo)[-1]
 
-    subfind_data = ar.gadget_subfind.load_subfind(final_snapshot, dir=loc + halo + suffix)
-       
+    print(f'Loading {halo} Snapshot {final_snapshot}')
+    subfind_data = ar.gadget_subfind.load_subfind(int(final_snapshot), dir=loc + halo + suffix)
+    print(f'{halo} Snapshot {final_snapshot} Loaded')
+
+    params=['frc2','fmc2','smty','sgmt','ssmt']
+
+    data={}
+
+    for param in params:
+        data[param]=subfind_data.data[param][0]
+        print(subfind_data.data[param][0])
+        print(f'Stored {halo} {param}')
+         
+    np.save(f'halos/{halo}/table_properties/table_data.npy',data)
+    
+
+def get_metallicity_behaviour(halo,**kwargs):
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'halos/{halo}/metallicity_behaviour')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/metallicity_behaviour') #Create halo directory if required
+        print(f'Created metallicity vs time directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if 'snap_nums' not in kwargs:
+        if 'redshifts' in kwargs:
+            redshift_range=kwargs['redshifts']
+            start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+            end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+            snap_nums=[start_snap_num,end_snap_num]
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_nums=kwargs['snap_nums']
+        start_snap_redshift=get_redshift(halo,snap_nums[0])
+        end_snap_redshift=get_redshift(halo,snap_nums[1])
+        snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+    for snap_num in snap_nums:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_index=snap_nums.index(snap_num)
+            snap_num='0'+snap_num
+            snap_nums[snap_index]=snap_num
+
+    gas_metallicities=[]
+    stellar_metallicities=[]
+
+    snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
+
+    for snap_num in snapshots:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
+        subfind_data=read_subfind_params(halo,snap_num=snap_num)
+        
+        raw_gas_z=subfind_data['halo_gas_met']
+        raw_star_z=subfind_data['halo_star_met']
+
+        gas_z=raw_gas_z/z_sol
+        star_z=raw_star_z/z_sol
+
+        gas_metallicities.append(gas_z)
+        stellar_metallicities.append(star_z)
+
+        np.save(f'halos/{halo}/metallicity_behaviour/gas.npy',gas_metallicities)
+        np.save(f'halos/{halo}/metallicity_behaviour/stars.npy',stellar_metallicities)
+    
+    
+
+
+    
 
     
   

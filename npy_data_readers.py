@@ -3,7 +3,7 @@ from halo_readers import get_snap_num
 
 def generate_units_file():
     params=['pos','mass','gz','gmet','nh','rel_pos','radii']
-    param_units=[units.Mpc,10**10*units.M_sun,z_sol,1,1,units.Mpc,units.Mpc]
+    param_units=[units.Mpc,10**10*units.M_sun,1,1,1,units.Mpc,units.Mpc]
     data=np.array([params,param_units],dtype='object')
     np.save('/cosma/apps/durham/dc-coll7/all_units.npy',data)
 
@@ -51,8 +51,8 @@ def read_subfind_params(halo,**kwargs):
             snap_num='0'+snap_num
     
     raw_data=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',allow_pickle=True)
-    param_names=['redshift','halo_pos','halo_mass','halo_r200']
-    param_units=[1,units.Mpc,10**10*units.M_sun,units.Mpc]
+    param_names=['redshift','halo_pos','halo_mass','halo_r200','halo_gas_met','halo_star_met']
+    param_units=[1,units.Mpc,10**10*units.M_sun,units.Mpc,1,1]
     subfind_params={param:raw_data[param_names.index(param)]*param_units[param_names.index(param)] for param in param_names}
     return subfind_params
 
