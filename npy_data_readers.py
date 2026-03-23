@@ -23,6 +23,11 @@ def load_units(data,param):
     return read_data
 
 def read_raw_file(halo,matter_type,param,**kwargs):
+    if 'save_dir' in kwargs:
+        save_dir=kwargs['save_dir']
+    else:
+        save_dir='apps'
+
     if 'snap_num' in kwargs:
         snap_num=str(kwargs['snap_num'])
     elif 'redshift' in kwargs:
@@ -34,11 +39,16 @@ def read_raw_file(halo,matter_type,param,**kwargs):
     while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
             snap_num='0'+snap_num
     
-    raw_data=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/{param}.npy')
+    raw_data=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/{param}.npy')
     units_data=load_units(raw_data,param)
     return(units_data)
 
 def read_subfind_params(halo,**kwargs):
+    if 'save_dir' in kwargs:
+        save_dir=kwargs['save_dir']
+    else:
+        save_dir='apps'
+    
     if 'snap_num' in kwargs:
         snap_num=str(kwargs['snap_num'])
     elif 'redshift' in kwargs:
@@ -50,9 +60,9 @@ def read_subfind_params(halo,**kwargs):
     while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
             snap_num='0'+snap_num
     
-    raw_data=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',allow_pickle=True)
-    param_names=['redshift','halo_pos','halo_mass','halo_r200','halo_gas_met','halo_star_met']
-    param_units=[1,units.Mpc,10**10*units.M_sun,units.Mpc,1,1]
+    raw_data=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',allow_pickle=True)
+    param_names=['redshift','halo_pos','halo_mass','halo_r200','halo_gas_met','halo_star_met','halo_m200']
+    param_units=[1,units.Mpc,10**10*units.M_sun,units.Mpc,1,1,10**10*units.M_sun]
     subfind_params={param:raw_data[param_names.index(param)]*param_units[param_names.index(param)] for param in param_names}
     return subfind_params
 

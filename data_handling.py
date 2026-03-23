@@ -5,7 +5,13 @@ import plot_generation as plot
 import processing as calc  
 
 def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapshot data into .npy files for a given halo and snapshot number/redshift
-    
+    # --- Location Data Handling ---
+
+    if 'save_dir' in kwargs:
+        save_dir=kwargs['save_dir']
+    else:
+        save_dir='apps'
+
     #--- Halo Selection ---
 
     if 'path' in kwargs: #Detects for provision of alternate data directory
@@ -19,9 +25,9 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         print(*available_halos,sep='\n')
         sys.exit('Halo Name Not Found in Directory') #Error message for incorrect halo name
     
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}') #Create halo directory if required
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')
@@ -70,18 +76,18 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
     suffix='/output/' #Suffix to ensure data from each snapshot is read
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}')!=True: #Checks for dedicated directory for chosen snapshot
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}')!=True: #Checks for dedicated directory for chosen snapshot
         print(f'\nNo Directory Detected for {halo} Snapshot {snap_num}') 
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}') #Creates snapshot directory if necessary
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}') #Creates snapshot directory if necessary
         print(f'{halo} Snapshot {snap_num} Directory Created')
     else:
         print(f'\n{halo} Snapshot {snap_num} Directory Located')    
 
     #--- Subfind Data Handling ---
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind')!=True: #Checks for subfind data directory within snapshot directory
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind')!=True: #Checks for subfind data directory within snapshot directory
         print(f'\nNo {halo} Snapshot {snap_num} subfind directory detected')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind') #Creates subfind directory if necessary
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind') #Creates subfind directory if necessary
         print(f'Subfind directory for {halo} Snapshot {snap_num} created')
     else:
         print(f'\n{halo} Snapshot {snap_num} Subfind Directory Located')
@@ -90,7 +96,7 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
     subfind_data = ar.gadget_subfind.load_subfind(int(snap_num), dir=loc + halo + suffix) #Import subfind dataset
     print('Subfind Data imported')
 
-    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_positions.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_masses.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy')!=True: #Detects if subfind data arrays have been already imported and stored external
+    if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_positions.npy')!=True or os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_masses.npy')!=True or os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy')!=True: #Detects if subfind data arrays have been already imported and stored external
         print(f'\nNo Subfind FoF Data Located\Loading subfind data for {halo} from Snapshot {snap_num}') #Creates relevant external data arrays if required
 
         #--- Subfind-Wide Data Processing ---
@@ -101,24 +107,25 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         high_res_sf_masses=all_sf_masses[high_res_mask]
         sf_masses=np.sum(high_res_sf_masses,axis=1) #Calculates total high-res mass for each FoF group
         
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_positions.npy',sf_positions) #Saves subfind-wide arrays to external .npy files
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_positions.npy',sf_positions) #Saves subfind-wide arrays to external .npy files
         print('Subfind FoF position data saved')
 
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_masses.npy',sf_masses)
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/fof_masses.npy',sf_masses)
         print('Subfind FoF mass data saved')
 
         #--- FoF Group 1/Main Halo Data Processing ---
         halo_pos=sf_positions[0] #Main Halo Position (in Mpc)
         halo_mass=sf_masses[0] #Main Halo Mass (in 10^10 M_sol)
         halo_r200=subfind_data.data['frc2'][0] #Main Halo R_200_crit (in Mpc)
+        halo_m200=subfind_data.data['fmc2'][0] #Main Halo R_200_crit (in Mpc)
         halo_gas_met=subfind_data.data['sgmt'][0]
         halo_star_met=subfind_data.data['ssmt'][0]
 
         redshift=subfind_data.redshift #Retrieve snapshot redshift value from header
         
-        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200,halo_gas_met,halo_star_met],dtype='object') #Create storage array for FoF Group 1 parameters
+        saved_params=np.array([redshift,halo_pos,halo_mass,halo_r200,halo_gas_met,halo_star_met,halo_m200],dtype='object') #Create storage array for FoF Group 1 parameters
         
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',saved_params) #Save FoF Group 1 parameters to external .npy file
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/subfind/halo_params.npy',saved_params) #Save FoF Group 1 parameters to external .npy file
         print('Subfind Halo Parameters Saved')
     else:
         print('\nFoF Subfind Data Located')
@@ -127,23 +134,25 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
         if os.path.isdir(f'figures/{halo}/fof_scatter')!=True:
                 os.makedirs(f'figures/{halo}/fof_scatter',exist_ok=True)
         if kwargs['plot_fof_scatter']==True:
-            plot.fof_scatter(halo,snap_num=snap_num) #Generates FoF scatter plot
+            #plot.fof_scatter(halo,snap_num=snap_num) #Generates FoF scatter plot
+            pass
     elif 'all_plots' in kwargs: #Checks if override for all plots is enabled
         if os.path.isdir(f'figures/{halo}/fof_scatter')!=True:
                 os.makedirs(f'figures/{halo}/fof_scatter',exist_ok=True)
         if kwargs['all_plots']==True:
-            plot.fof_scatter(halo,snap_num=snap_num)
+            #plot.fof_scatter(halo,snap_num=snap_num)
+            pass
 
     #--- Snapshot Data Handling ---
 
     #--- Directory Management ---
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw')!=True: #Checks for raw snapshot data directory within snapshot directory
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw')!=True: #Checks for raw snapshot data directory within snapshot directory
         print(f'\nNo {halo} raw Snapshot {snap_num} data directory detected')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw') #Creates raw data directory if necessary
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw') #Creates raw data directory if necessary
 
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas') #Creates raw matter type directories
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/stars')
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas') #Creates raw matter type directories
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm')
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/stars')
 
         print(f'Directory for {halo} raw Snapshot {snap_num} data created')
     else:
@@ -160,9 +169,9 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
     type_directories=['gas','dm','stars'] #names of target directories to save .npy files to
     lyra_types=[0,1,4] #Type numbers for gas/DM/stars in raw Lyra data
 
-    current_gas_data=[file[:-4] for file in os.listdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas')] #Import list of current files saved for each file
-    current_dm_data=[file[:-4] for file in os.listdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm')]
-    current_stars_data=[file[:-4] for file in os.listdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/stars')]
+    current_gas_data=[file[:-4] for file in os.listdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas')] #Import list of current files saved for each file
+    current_dm_data=[file[:-4] for file in os.listdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm')]
+    current_stars_data=[file[:-4] for file in os.listdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/stars')]
 
     current_data=[current_gas_data,current_dm_data,current_stars_data] #2D array for comparison to required data
 
@@ -185,7 +194,7 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
                 dm_pos=snapshot_data.data['pos'] #Loads DM position data
                 print(f'\nDM pos data loaded')
 
-                np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/pos.npy',dm_pos) #Saves DM position data to external .npy file
+                np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/pos.npy',dm_pos) #Saves DM position data to external .npy file
                 print(f'DM pos data saved externally')
 
                 #Loads necessary parameters to determine constant DM particle mass
@@ -194,18 +203,18 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
                 if raw_dm_particle_mass!=0:
                     dm_particle_mass=raw_dm_particle_mass/h
                 else:
-                    nonzero_dm_particle_mass=read_raw_file('T1_Aug','dm','dm_params',snap_num=152)[1]
+                    nonzero_dm_particle_mass=read_raw_file('T1_Aug','dm','dm_params',snap_num=152,)[1]
                     dm_particle_mass=nonzero_dm_particle_mass/h #Apply relevant conversion from header DM particle mass to 'real' mass
                 print(f'\nDM Mass Parameters data loaded')
 
                 dm_params=np.array([h,dm_particle_mass]) #Stores all DM mass parameters in array for external file
-                np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/dm_params.npy',dm_params) #Saves DM parameters to external .npy file
+                np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/dm_params.npy',dm_params) #Saves DM parameters to external .npy file
                 print(f'DM Mass Parameters data saved externally')
 
                 dm_mass=np.full_like(dm_pos[:,0],dm_particle_mass) #Creates 'normal' DM mass array using params and loaded snapshot data
                 print(f'\nDM mass data calculated')
 
-                np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/mass.npy',dm_mass) #Saves DM mass array
+                np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/dm/mass.npy',dm_mass) #Saves DM mass array
                 print(f'DM mass data saved externally')     
             else: #Completes all non-exception exports
                 to_save=req_snapshot_data[type_index] #Loads all requires snapshot data labels
@@ -214,16 +223,24 @@ def get_raw_data(halo,**kwargs): #Function to import all raw subfind and snapsho
                     print(f'\n{type_name} {param} data loaded')
 
                     directory=type_directories[type_index] #Finds correct type directory for data storage
-                    np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{directory}/{param}.npy',data) #Saves parameter data to external .npy file
+                    np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{directory}/{param}.npy',data) #Saves parameter data to external .npy file
                     print(f'{type_name} {param} data saved externally')
         else:
             print(f'\n{halo} Snapshot {snap_num} {type_name} raw data complete')
     print(f'\n{halo} Snapshot {snap_num} Raw Data Import Complete')
 
 def get_mass_density_data(halo,**kwargs):
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+
+    # --- Location Data Handling ---
+
+    if 'save_dir' in kwargs:
+        save_dir=kwargs['save_dir']
+    else:
+        save_dir='apps'
+
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}') #Create halo directory if required
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')
@@ -254,73 +271,73 @@ def get_mass_density_data(halo,**kwargs):
         type_name=type_names[type_index]
         to_load=params[type_index]
 
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/pos.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/mass.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/pos.npy')!=True or os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/mass.npy')!=True:
             print(f'\nSnapshot {snap_num} {type_name} Raw Data Incomplete')
             if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
-                    get_raw_data(halo,redshift=target_redshift,all_plots=True)
+                    get_raw_data(halo,redshift=target_redshift,all_plots=True,save_dir=save_dir)
                 else:
-                    get_raw_data(halo,redshift=target_redshift)
+                    get_raw_data(halo,redshift=target_redshift,save_dir=save_dir)
         else:
             print(f'\nSnapshot {snap_num} {type_name} raw data located')
         
-        halo_pos=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
-        redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
+        halo_pos=read_subfind_params(halo,snap_num=snap_num,save_dir=save_dir)['halo_pos']
+        redshift=read_subfind_params(halo,snap_num=snap_num,save_dir=save_dir)['redshift']
 
-        type_data={param:read_raw_file(halo,matter_type,param,snap_num=snap_num) for param in to_load}
+        type_data={param:read_raw_file(halo,matter_type,param,snap_num=snap_num,save_dir=save_dir) for param in to_load}
         
         loaded_data[matter_type]=type_data
 
     for matter_type, data in loaded_data.items():
         type_name=type_names[type_directories.index(matter_type)]
 
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy')!=True:
             print(f'{type_name} Relative Position Data Not Found, Generating')
 
             rel_pos=calc.to_rel(data['pos'],halo_pos)
             loaded_data[matter_type]['rel_pos']=rel_pos
 
-            np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy',rel_pos.value)
+            np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/rel_pos.npy',rel_pos.value)
             print(f'{type_name} Relative Position File Generated')
         else:
-            rel_pos=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num)
+            rel_pos=read_raw_file(halo,matter_type,'rel_pos',snap_num=snap_num,save_dir=save_dir)
             print(f'{type_name} Relative Positions Loaded')
 
             loaded_data[matter_type]['rel_pos']=rel_pos
 
     for matter_type, data in loaded_data.items():
         type_name=type_names[type_directories.index(matter_type)]
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/radii.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/radii.npy')!=True:
             print(f'{type_name} Radial Position Data Not Found, Generating')
 
             radii=calc.to_rad(data['pos'],halo_pos)
             loaded_data[matter_type]['radii']=radii
 
-            np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/radii.npy',radii.value)
+            np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/{matter_type}/radii.npy',radii.value)
             print(f'{type_name} Radial Position File Generated')
         else:
-            radii=read_raw_file(halo,matter_type,'radii',snap_num=snap_num)
+            radii=read_raw_file(halo,matter_type,'radii',snap_num=snap_num,save_dir=save_dir)
             print(f'{type_name} Radial Positions Loaded')
 
             loaded_data[matter_type]['radii']=radii
     
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned')
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned')
                       
     if 'bins' in kwargs:
         bin_num=kwargs['bins']
     else:
         bin_num=512
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px')
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px')
     
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass')
     
     for matter_type, data in loaded_data.items():
         type_name=type_names[type_directories.index(matter_type)]
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')!=True:
             extents=calc.get_extent(data['rel_pos'])
             print(f'\n{matter_type} spatial extent calculated')
             
@@ -348,10 +365,10 @@ def get_mass_density_data(halo,**kwargs):
             loaded_data[matter_type]['proj_dens']=proj_densities
 
             save_data=[proj_densities['xy'],proj_densities['xz'],proj_densities['yz']]
-            np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy',save_data)
+            np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy',save_data)
             print(f'\n{matter_type} projected density file created')
         else:
-            loaded_data[matter_type]['proj_dens']=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')
+            loaded_data[matter_type]['proj_dens']=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/{matter_type}.npy')
             print(f'\n{matter_type} projected density file loaded')
 
     if 'plot_proj_dens' in kwargs: #Detects if plots are enabled
@@ -365,12 +382,12 @@ def get_mass_density_data(halo,**kwargs):
                 os.makedirs(f'figures/{halo}/{bin_num}/proj_mass_density',exist_ok=True)
             plot.proj_mass_density(halo,bin_num,snap_num=snap_num)
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density')
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density')
 
     for matter_type, data in loaded_data.items():
         type_name=type_names[type_directories.index(matter_type)]
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy')!=True:
             spherical_bins = np.logspace(-4,-1,50)*units.Mpc
             bin_centres=(spherical_bins[:-1] + spherical_bins[1:])/2
 
@@ -383,7 +400,7 @@ def get_mass_density_data(halo,**kwargs):
             gcm3_radial_densities=radial_densities.to_value(units.g/units.cm**3)
 
             radial_density_profile=np.array([kpc_bin_centres,gcm3_radial_densities])
-            np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy',radial_density_profile)
+            np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/radial_mass_density/{matter_type}.npy',radial_density_profile)
     
     if 'plot_rad_dens' in kwargs: #Detects if plots are enabled
         if kwargs['plot_rad_dens']==True:
@@ -397,10 +414,18 @@ def get_mass_density_data(halo,**kwargs):
             plot.radial_mass_density(halo,snap_num=snap_num)
 
             
-def get_gas_only_data(halo,**kwargs):    
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+def get_gas_only_data(halo,**kwargs):
+
+    # --- Location Data Handling ---
+
+    if 'save_dir' in kwargs:
+        save_dir=kwargs['save_dir']
+    else:
+        save_dir='apps'
+
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}') #Create halo directory if required
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')
@@ -430,43 +455,43 @@ def get_gas_only_data(halo,**kwargs):
     ran_get_raw=False
     
     for param in to_load:
-        if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas/{param}.npy')!=True:
+        if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas/{param}.npy')!=True:
             print(f'\nSnapshot {snap_num} {param} Raw Data Incomplete')
             if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
                     print('Getting raw data with plots')
-                    get_raw_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True)
+                    get_raw_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True,save_dir=save_dir)
             else:
                 print('Getting raw data without plots')
-                get_raw_data(halo,bin_num=bin_num,snap_num=snap_num)
+                get_raw_data(halo,bin_num=bin_num,snap_num=snap_num,save_dir=save_dir)
         else:
             print(f'\nSnapshot {snap_num} {param} raw data located')
             
-        loaded_data[param]=read_raw_file(halo,'gas',param,snap_num=snap_num)
+        loaded_data[param]=read_raw_file(halo,'gas',param,snap_num=snap_num,save_dir=save_dir)
         
-    loaded_data['halo_r200']=read_subfind_params(halo,snap_num=snap_num)['halo_r200']  
+    loaded_data['halo_r200']=read_subfind_params(halo,snap_num=snap_num,save_dir=save_dir)['halo_r200']  
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned')!=True:
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned')!=True:
         if 'all_plots' in kwargs: #Checks if override for all plots is enabled
                 if kwargs['all_plots']==True:
-                    get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True)
+                    get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num,all_plots=True,save_dir=save_dir)
         else:
-            get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num)
+            get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num,save_dir=save_dir)
 
-    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas/rel_pos.npy')!=True:
-        get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num)
+    if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/raw/gas/rel_pos.npy')!=True:
+        get_mass_density_data(halo,bin_num=bin_num,snap_num=snap_num,save_dir=save_dir)
 
-    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
-    loaded_data['total_mass']=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/gas.npy')
+    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num,save_dir=save_dir)
+    loaded_data['total_mass']=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/total_mass/gas.npy')
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')
 
     req_densities=['total_mass','hydrogen_mass','nH_mass','nH_col']
-    current_densities=[file[:-4] for file in os.listdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')]
+    current_densities=[file[:-4] for file in os.listdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only')]
 
     if set(req_densities).issubset(current_densities)!=True:
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/total_mass.npy',loaded_data['total_mass'])
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/total_mass.npy',loaded_data['total_mass'])
 
         extents=calc.get_extent(loaded_data['rel_pos'])
         print(f'\nSpatial extent calculated')
@@ -503,7 +528,7 @@ def get_gas_only_data(halo,**kwargs):
         
         for density in proj_densities:
             save_data=[proj_densities[density]['xy'],proj_densities[density]['xz'],proj_densities[density]['yz']]
-            np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy',save_data)
+            np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/{density}.npy',save_data)
     else:
         print('Gas Density Files Located')
 
@@ -518,7 +543,7 @@ def get_gas_only_data(halo,**kwargs):
                 os.makedirs(f'figures/{halo}/{bin_num}/proj_gas_densities',exist_ok=True)
             plot.proj_gas_densities(halo,bin_num,snap_num=snap_num)
 
-    if os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True or os.path.exists(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')!=True:
+    if os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')!=True or os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy')!=True or os.path.exists(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')!=True:
         plane_indexes=[[0,1],[0,2],[1,2]]
         plane_names=['xy','xz','yz']
 
@@ -553,9 +578,9 @@ def get_gas_only_data(halo,**kwargs):
         to_save=['mean_gz','bin_radii','bin_masses']
         save_data=np.array([[mean_metallicties['xy'][param],mean_metallicties['xz'][param],mean_metallicties['yz'][param]] for param in to_save])
 
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy',save_data[0])
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy',save_data[1])
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy',save_data[2])
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy',save_data[0])
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_radii.npy',save_data[1])
+        np.save(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy',save_data[2])
 
     if 'plot_mean_gz' in kwargs: #Detects if plots are enabled
         if kwargs['plot_mean_gz']==True:
@@ -568,15 +593,15 @@ def get_gas_only_data(halo,**kwargs):
                 os.makedirs(f'figures/{halo}/{bin_num}/weighted_mean_gz',exist_ok=True)
             plot.weighted_mean_gz(halo,bin_num,snap_num=snap_num)
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')   
+    if os.path.isdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')!=True:
+        os.mkdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')   
     
     obj_types=['DLA','subDLA','LymanLimit','lo_z_DLA','lo_z_subDLA','lo_z_LymanLimit','lo_z']
-    current_masks=[file[:-4] for file in os.listdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')]
+    current_masks=[file[:-4] for file in os.listdir(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked')]
 
     if set(obj_types).issubset(current_masks)!=True:
-        nH_col=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
-        mean_gz=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
+        nH_col=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
+        mean_gz=np.load(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
         
         masks={'DLA':np.log10(nH_col) >20.3,'subDLA': (20.3>np.log10(nH_col)) & (np.log10(nH_col) >19),'LymanLimit': (19>np.log10(nH_col)) & (np.log10(nH_col) >17.2)}
         
@@ -584,19 +609,19 @@ def get_gas_only_data(halo,**kwargs):
         lo_z_nH_col=np.ma.masked_where(~lo_z_mask,nH_col)
         lo_z_mean_gz=np.ma.masked_where(~lo_z_mask,mean_gz)
         
-        np.savez(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z.npz', nH_col_data=lo_z_nH_col.data, nH_col_mask=lo_z_nH_col.mask, mean_gz_data=lo_z_mean_gz.data, mean_gz_mask=lo_z_mean_gz.mask)
+        np.savez(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z.npz', nH_col_data=lo_z_nH_col.data, nH_col_mask=lo_z_nH_col.mask, mean_gz_data=lo_z_mean_gz.data, mean_gz_mask=lo_z_mean_gz.mask)
 
 
         for mask in masks:
             masked_nH_col=np.ma.masked_where(~masks[mask],nH_col)
             masked_mean_gz=np.ma.masked_where(~masks[mask],mean_gz)
 
-            np.savez(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz', nH_col_data=masked_nH_col.data, nH_col_mask=masked_nH_col.mask, mean_gz_data=masked_mean_gz.data, mean_gz_mask=masked_mean_gz.mask)
+            np.savez(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/{mask}.npz', nH_col_data=masked_nH_col.data, nH_col_mask=masked_nH_col.mask, mean_gz_data=masked_mean_gz.data, mean_gz_mask=masked_mean_gz.mask)
 
             lo_z_masked_nH_col=np.ma.masked_where(~lo_z_mask,masked_nH_col)
             lo_z_masked_mean_gz=np.ma.masked_where(~lo_z_mask,masked_mean_gz)
 
-            np.savez(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z_{mask}.npz', nH_col_data=lo_z_masked_nH_col.data, nH_col_mask=lo_z_masked_nH_col.mask, mean_gz_data=lo_z_masked_mean_gz.data, mean_gz_mask=lo_z_masked_mean_gz.mask)
+            np.savez(f'/cosma/{save_dir}/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/masked/lo_z_{mask}.npz', nH_col_data=lo_z_masked_nH_col.data, nH_col_mask=lo_z_masked_nH_col.mask, mean_gz_data=lo_z_masked_mean_gz.data, mean_gz_mask=lo_z_masked_mean_gz.mask)
     else:
         print('Masked Files Located')
     if 'plot_scatter' in kwargs: #Detects if plots are enabled
@@ -611,17 +636,17 @@ def get_gas_only_data(halo,**kwargs):
             plot.nH_col_gz_scatter(halo,bin_num,'xy',snap_num=snap_num)
 
 
-def get_threshold_behaviour_data(halo, **kwargs):
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+def get_mass_fractions(halo, **kwargs):
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')  
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour')!=True: #Detect for dedicated .npy storage directory for halo raw data
+    if os.path.isdir(f'halos/{halo}/mass_fracs/')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour') #Create halo directory if required
+        os.mkdir(f'halos/{halo}/mass_fracs/') #Create halo directory if required
         print(f'Created threshold vs time directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')  
@@ -653,16 +678,12 @@ def get_threshold_behaviour_data(halo, **kwargs):
     else:
         bin_num=512 
 
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px')!=True: #Detect for dedicated .npy storage directory for halo raw data
+    if os.path.isdir(f'halos/{halo}/mass_fracs/{bin_num}px')!=True: #Detect for dedicated .npy storage directory for halo raw data
         print('\nHalo Directory Not Present')
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px') #Create halo directory if required
+        os.mkdir(f'halos/{halo}/mass_fracs/{bin_num}px') #Create halo directory if required
         print(f'Created directory for {halo}')
     else:
         print(f'\nDirectory for {halo} located')  
-
-    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs')!=True:
-        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs') #Create halo directory if required
-
 
     snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
 
@@ -675,7 +696,7 @@ def get_threshold_behaviour_data(halo, **kwargs):
             snap_num='0'+snap_num
         redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
         all_data['redshifts'].append(redshift)
-        nH_col=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
+        nH_col=np.load(f'/cosma/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
         mean_gz=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
         bin_masses=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')
         
@@ -711,9 +732,9 @@ def get_threshold_behaviour_data(halo, **kwargs):
 
     for mask in all_masks:
         mask_data=np.array([all_data[mask]['xy'],all_data[mask]['xz'],all_data[mask]['yz']])
-        np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/{bin_num}px/mass_fracs/{mask}.npy',mask_data)
+        np.save(f'halos/{halo}/mass_fracs/{bin_num}px/{mask}.npy',mask_data)
         
-    np.save(f'/cosma/apps/durham/dc-coll7/halos/{halo}/threshold_behaviour/redshifts.npy',all_data['redshifts'])
+    np.save(f'halos/{halo}/mass_fracs/{bin_num}px/redshifts.npy',all_data['redshifts'])
     
 
 def get_stellar_masses(halo, **kwargs):
@@ -787,13 +808,6 @@ def get_properties_table(halo):
     else:
         print(f'\nDirectory for {halo} located')  
 
-    if os.path.isdir(f'halos/{halo}/table_properties')!=True: #Detect for dedicated .npy storage directory for halo raw data
-        print('\nHalo Directory Not Present')
-        os.mkdir(f'halos/{halo}/table_properties') #Create halo directory if required
-        print(f'Created stellar mass directory for {halo}')
-    else:
-        print(f'\nDirectory for {halo} located')
-
     loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
     suffix='/output/' #Suffix to ensure data from each snapshot is read
     
@@ -804,16 +818,40 @@ def get_properties_table(halo):
     print(f'{halo} Snapshot {final_snapshot} Loaded')
 
     params=['frc2','fmc2','smty','sgmt','ssmt']
+    param_names=['R200','M200','Gas Mass','Halo Mass','Stellar Mass','Gas Metallicity','Stellar Metallicity']
 
-    data={}
+    data={'frc2':{'name':'R200 (kpc)','raw_units':units.Mpc,'display_units':units.kpc},'fmc2':{'name':'M200 (M_sol)','raw_units':10**10*units.M_sun,'display_units':units.M_sun},'smty':{'names':['Gas Mass (M_sol)','DM Mass (M_sol)','Stellar Mass (M_sol)'],'raw_units':10**10*units.M_sun,'display_units':units.M_sun},'sgmt':{'name':'Gas Metallicity (Z_sol)','raw_units':1,'display_units':1/z_sol},'ssmt':{'name':'Stellar Metallicity (Z_sol)','raw_units':1,'display_units':1/z_sol}}
 
-    for param in params:
-        data[param]=subfind_data.data[param][0]
-        print(subfind_data.data[param][0])
-        print(f'Stored {halo} {param}')
-         
-    np.save(f'halos/{halo}/table_properties/table_data.npy',data)
+    for param in params: 
+        if param=='smty':
+            high_res_index=[0,1,4]
+            data[param]['value']=[subfind_data.data[param][0][index] for index in [high_res_index]]
+        else:
+            data[param]['value']=subfind_data.data[param][0]
     
+    to_write=f'--- {halo} ---'
+
+    for halo_val in data:
+        if 'names' in data[halo_val]:
+            outputs=[]
+            for name in data[halo_val]['names']:                
+                raw_value=data[halo_val]['value'][0][data[halo_val]['names'].index(name)]*data[halo_val]['raw_units']
+                display_value="{:.3e}".format(raw_value.to_value(data[halo_val]['display_units']))
+                outputs.append(f"{halo} {name}: {display_value}")
+            data[halo_val]['output']='\n'.join(string for string in outputs)
+        elif data[halo_val]['raw_units']==1:
+            raw_value=raw_value=data[halo_val]['value']*data[halo_val]['raw_units']
+            display_value="{:.3e}".format(raw_value*data[halo_val]['display_units'])
+            data[halo_val]['output']=f"{halo} {data[halo_val]['name']}: {display_value}"
+        else:
+            raw_value=raw_value=data[halo_val]['value']*data[halo_val]['raw_units']
+            display_value="{:.3e}".format(raw_value.to_value(data[halo_val]['display_units']))
+            data[halo_val]['output']=f"{halo} {data[halo_val]['name']}: {display_value}"
+
+        to_write+='\n'+data[halo_val]['output']
+
+    with open(f'halos/{halo}/table_properties.txt','w') as f:
+        f.write(to_write)
 
 def get_metallicity_behaviour(halo,**kwargs):
     if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
@@ -874,72 +912,530 @@ def get_metallicity_behaviour(halo,**kwargs):
         stellar_metallicities.append(star_z)
 
         np.save(f'halos/{halo}/metallicity_behaviour/gas.npy',gas_metallicities)
-        np.save(f'halos/{halo}/metallicity_behaviour/stars.npy',stellar_metallicities)
-    
-    
+        np.save(f'halos/{halo}/metallicity_behaviour/stars.npy',stellar_metallicities)   
+
+def sightlines(halo,**kwargs):
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')
+
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)  
+
+    snap_num=str(snap_num)
+    while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
 
 
-    
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
 
+    if os.path.isdir(f'halos/{halo}/sightlines')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/sightlines') #Create halo directory if required
+        print(f'Created sightlines directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located') 
+
+        if os.path.isdir(f'halos/{halo}/sightlines/{snap_num}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+            print('\nHalo Directory Not Present')
+            os.mkdir(f'halos/{halo}/sightlines/{snap_num}') #Create halo directory if required
+            print(f'Created sightlines directory for {halo}')  
+
+    loc='/cosma8/data/dp004/lyra/original_sample/' #Uses default location if none provided
+    suffix='/output/' #Suffix to ensure data from each snapshot is read
+
+    print('Loading Subfind Data')
+
+    subfind_data = ar.gadget_subfind.load_subfind(int(snap_num), dir=loc + halo + suffix)
+
+    print('Loaded Subfind Data')
+
+    print('Loading Snapshot Data')
+
+    snapshot_data=ar.gadget_snap.gadget_snapshot(loc + halo + suffix + 'snapdir_'+str(snap_num)+'/snapshot_'+str(snap_num),loadonlytype=[0], hdf5=True, lazy_load=True, subfind = subfind_data)
+
+    print('Loaded Snapshot Data')
+
+    halo_pos=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
+    halo_r200=read_subfind_params(halo,snap_num=snap_num)['halo_r200'].value
+
+    print('Loaded Halo Data')
+
+    gas_pos=snapshot_data.data['pos']
+    print('Postion Loaded')
+    gas_mass=snapshot_data.data['mass']
+    print('Mass Loaded')
+    gas_gz=snapshot_data.data['gz']
+    print('gz Loaded')
+    gas_gmet=snapshot_data.data['gmet'][:,0]
+    print('gmet Loaded')
+    gas_nh=snapshot_data.data['nh']
+    print('nh Loaded')
+
+    gas_radii=calc.to_rad(gas_pos,halo_pos.value)
+    print('Radii Loaded')
+
+    radial_data={'10': {'mask_radius':10*halo_r200}}
+
+    for radial_mask in radial_data:
+        if os.path.isdir(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+            print('\nHalo Directory Not Present')
+            os.mkdir(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}') #Create halo directory if required
+            print(f'Created sightlines directory for {halo}') 
+        
+        mask=gas_radii<radial_data[radial_mask]['mask_radius']
+        radial_data[radial_mask]['pos']=gas_pos[mask]
+        radial_data[radial_mask]['mass']=gas_mass[mask]
+        radial_data[radial_mask]['gz']=gas_gz[mask]
+        radial_data[radial_mask]['gmet']=gas_gmet[mask]
+        radial_data[radial_mask]['nh']=gas_nh[mask]
+
+        for param in radial_data[radial_mask]:
+            np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/{param}.npy',radial_data[radial_mask][param])
+
+def do_sightlines_scatter(halo,radial_mask,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)  
+
+    snap_num=str(snap_num)
+    while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
+
+    to_load=['pos','gmet','mass','nh','gz']
+    loaded_units=[units.Mpc,1,10**10*units.M_sun,1,1/z_sol]
+    loaded_data={}
+
+    for param in to_load:
+        loaded_data[param]=np.load(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/{param}.npy')*loaded_units[to_load.index(param)]
+
+    loaded_data['halo_pos']=read_subfind_params(halo,snap_num=snap_num)['halo_pos']
+    loaded_data['rel_pos']=loaded_data['pos']-loaded_data['halo_pos']
+
+    extents=calc.get_extent(loaded_data['rel_pos'])
+    print(f'\nSpatial extent calculated')
+            
+    bin_widths=[extents[dimension]['range'].to_value(units.cm)/bin_num for dimension in extents]
+    print(f'\nBin widths calculated')
+
+    plane_indexes=[[0,1],[0,2],[1,2]]
+    plane_names=['xy','xz','yz']
+
+    cm_rel_pos=loaded_data['rel_pos'].to_value(units.cm)
+    g_mass=loaded_data['mass'].to_value(units.g)
+    H_mass_frac=loaded_data['gmet']
+    nH_mass_frac=loaded_data['nh']
     
-  
+    proj_densities={'nH_col':{}}
+
+    for plane in plane_indexes:
+        binned_mass=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass,bins=[bin_num,bin_num],statistic='sum').statistic
+        bin_area=bin_widths[plane[0]]*bin_widths[plane[1]]
                 
+        proj_mass_dens=binned_mass/bin_area
 
-                
+        proj_densities[plane_names[plane_indexes.index(plane)]]=proj_mass_dens
 
-              
+        loaded_data['proj_dens']=proj_densities
+
+        plane_name=plane_names[plane_indexes.index(plane)]
+        
+        binned_nH_col=stats.binned_statistic_2d(cm_rel_pos[:,plane[0]],cm_rel_pos[:,plane[1]],g_mass*H_mass_frac*nH_mass_frac/mass_H_atom,bins=[bin_num,bin_num],statistic='sum').statistic
+
+        bin_area=bin_widths[plane[0]]*bin_widths[plane[1]]
+
+        nH_col_density=binned_nH_col/bin_area
+
+        proj_densities['nH_col'][plane_name]=nH_col_density
     
+    save_data=[proj_densities['xy'],proj_densities['xz'],proj_densities['yz']]
+    np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/total_mass.npy',save_data)
+
+    save_data=[proj_densities['nH_col']['xy'],proj_densities['nH_col']['xz'],proj_densities['nH_col']['yz']]
+    np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/nH_col.npy',save_data)
+
+    rel_pos=loaded_data['rel_pos']
+
+    raw_metallicity=loaded_data['gz']
+    metallicity=raw_metallicity/z_sol
+
+    mass=loaded_data['mass']
+
+    total_mass=np.sum(mass)
+
+    mean_metallicties={}
+
+    for plane in plane_indexes:
+        plane_name=plane_names[plane_indexes.index(plane)]
+        mean_metallicties[plane_name]={}
+
+        binned_masses=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],mass,bins=[bin_num,bin_num],statistic='sum')
+
+        bin_grid=np.meshgrid((binned_masses.x_edge[:-1]+binned_masses.x_edge[1:])/2,(binned_masses.y_edge[:-1]+binned_masses.y_edge[1:])/2)
+        bin_radii=np.sqrt(bin_grid[0]**2+bin_grid[1]**2)
+        mean_metallicties[plane_name]['bin_radii']=bin_radii
+
+        bin_masses=binned_masses.statistic
+        mean_metallicties[plane_name]['bin_masses']=bin_masses
+
+        weighted_metallicity=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],metallicity*mass,bins=[bin_num,bin_num],statistic='sum').statistic
+        weighted_mean_metallicity=np.divide(weighted_metallicity,bin_masses)
+        mean_metallicties[plane_name]['mean_gz']=weighted_mean_metallicity
+
+    to_save=['mean_gz','bin_radii','bin_masses']
+    save_data=np.array([[mean_metallicties['xy'][param],mean_metallicties['xz'][param],mean_metallicties['yz'][param]] for param in to_save])
+
+    np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/mean_gz.npy',save_data[0])
+    np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/bin_radii.npy',save_data[1])
+    np.save(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/bin_masses.npy',save_data[2])
+
+    nH_col=np.load(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/nH_col.npy')
+    mean_gz=np.load(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/mean_gz.npy')
+
+    masks={'DLA':np.log10(nH_col) >20.3,'subDLA': (20.3>np.log10(nH_col)) & (np.log10(nH_col) >19),'LymanLimit': (19>np.log10(nH_col)) & (np.log10(nH_col) >17.2)}
+        
+    lo_z_mask=np.log10(mean_gz)<-3
+    lo_z_nH_col=np.ma.masked_where(~lo_z_mask,nH_col)
+    lo_z_mean_gz=np.ma.masked_where(~lo_z_mask,mean_gz)
+    
+    np.savez(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/lo_z.npz', nH_col_data=lo_z_nH_col.data, nH_col_mask=lo_z_nH_col.mask, mean_gz_data=lo_z_mean_gz.data, mean_gz_mask=lo_z_mean_gz.mask)
+
+    for mask in masks:
+        masked_nH_col=np.ma.masked_where(~masks[mask],nH_col)
+        masked_mean_gz=np.ma.masked_where(~masks[mask],mean_gz)
+
+        np.savez(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/{mask}.npz', nH_col_data=masked_nH_col.data, nH_col_mask=masked_nH_col.mask, mean_gz_data=masked_mean_gz.data, mean_gz_mask=masked_mean_gz.mask)
+
+        lo_z_masked_nH_col=np.ma.masked_where(~lo_z_mask,masked_nH_col)
+        lo_z_masked_mean_gz=np.ma.masked_where(~lo_z_mask,masked_mean_gz)
+
+        np.savez(f'halos/{halo}/sightlines/{snap_num}/{radial_mask}/lo_z_{mask}.npz', nH_col_data=lo_z_masked_nH_col.data, nH_col_mask=lo_z_masked_nH_col.mask, mean_gz_data=lo_z_masked_mean_gz.data, mean_gz_mask=lo_z_masked_mean_gz.mask)
+
+def get_area_fractions(halo, **kwargs):
+    if os.path.isdir(f'halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'halos/{halo}/area_fracs')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/area_fracs') #Create halo directory if required
+        print(f'Created areas fractions directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if 'snap_nums' not in kwargs:
+        if 'redshifts' in kwargs:
+            redshift_range=kwargs['redshifts']
+            start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+            end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+            snap_nums=[start_snap_num,end_snap_num]
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_nums=kwargs['snap_nums']
+        start_snap_redshift=get_redshift(halo,snap_nums[0])
+        end_snap_redshift=get_redshift(halo,snap_nums[1])
+        snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+    for snap_num in snap_nums:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_index=snap_nums.index(snap_num)
+            snap_num='0'+snap_num
+            snap_nums[snap_index]=snap_num
+
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
+
+    if os.path.isdir(f'halos/{halo}/area_fracs/{bin_num}px')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/area_fracs/{bin_num}px') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
+
+    all_data={'redshifts':[],'DLA':{'xy':[],'xz':[],'yz':[]},'lo_z_DLA':{'xy':[],'xz':[],'yz':[]},'subDLA':{'xy':[],'xz':[],'yz':[]},'lo_z_subDLA':{'xy':[],'xz':[],'yz':[]},'LymanLimit':{'xy':[],'xz':[],'yz':[]},'lo_z_LymanLimit':{'xy':[],'xz':[],'yz':[]}}
+
+    for snap_num in snapshots:
+
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+        redshift=read_subfind_params(halo,snap_num=snap_num)['redshift']
+        all_data['redshifts'].append(redshift)
+        nH_col=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/nH_col.npy')
+        mean_gz=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/mean_gz.npy')
+        bin_masses=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/{snap_num}/binned/{bin_num}px/gas_only/bin_masses.npy')
+        
+        planes=['xy','xz','yz']
+
+        for plane in planes:
+            plane_index=planes.index(plane)
+            
+            nH_col_proj=nH_col[plane_index]
+            mean_gz_proj=mean_gz[plane_index]
+            bin_masses_proj=bin_masses[plane_index]
+
+            masks={'DLA':np.log10(nH_col_proj) >20.3,'subDLA': (20.3>np.log10(nH_col_proj)) & (np.log10(nH_col_proj) >19),'LymanLimit': (19>np.log10(nH_col_proj)) & (np.log10(nH_col_proj) >17.2)}
+
+            total_px=len(bin_masses_proj.flatten())
+
+            lo_z_mask=np.log10(mean_gz_proj)<-3
+
+            for mask in masks:
+                masked_bin_masses=np.ma.masked_where(~masks[mask],bin_masses_proj)
+                lo_z_masked_bin_masses=np.ma.masked_where(~lo_z_mask,masked_bin_masses)
+
+                masked_px=len(masked_bin_masses.compressed())
+                lo_z_masked_px=len(lo_z_masked_bin_masses.compressed())
+
+                masked_area_frac=masked_px/total_px
+                lo_z_masked_area_frac=lo_z_masked_px/total_px
+
+                all_data[mask][plane].append(masked_area_frac)
+                all_data[f'lo_z_{mask}'][plane].append(lo_z_masked_area_frac)
+    
+    all_masks=['DLA','subDLA','LymanLimit','lo_z_DLA','lo_z_subDLA','lo_z_LymanLimit']
+
+    for mask in all_masks:
+        mask_data=np.array([all_data[mask]['xy'],all_data[mask]['xz'],all_data[mask]['yz']])
+        np.save(f'halos/{halo}/area_fracs/{bin_num}px/{mask}.npy',mask_data)
+        
+    np.save(f'halos/{halo}/area_fracs/{bin_num}px/redshifts.npy',all_data['redshifts'])
+
+def get_redshift_lists(halos, **kwargs):
+    for halo in halos:
+        if 'snap_nums' not in kwargs:
+            if 'redshifts' in kwargs:
+                redshift_range=kwargs['redshifts']
+                start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+                end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+                snap_nums=[start_snap_num,end_snap_num]
+                snap_redshifts=[start_snap_redshift,end_snap_redshift]
+            else:
+                sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+        else:
+            snap_nums=kwargs['snap_nums']
+            start_snap_redshift=get_redshift(halo,snap_nums[0])
+            end_snap_redshift=get_redshift(halo,snap_nums[1])
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+        for snap_num in snap_nums:
+            snap_num=str(snap_num)
+            while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+                snap_index=snap_nums.index(snap_num)
+                snap_num='0'+snap_num
+                snap_nums[snap_index]=snap_num
+    
+        loaded_data=np.load(f'/cosma/apps/durham/dc-coll7/halos/{halo}/redshifts.npy')
+        start_index=np.where(loaded_data[0]==snap_nums[0])[0][0]
+        end_index=np.where(loaded_data[0]==snap_nums[1])[0][0]
+
+        target_snapshots=np.transpose(loaded_data[:,start_index:end_index+1])
+
+        snapshot_strings=[f'{snapshot[0]}: {np.round(np.float64(snapshot[1]),3)}' for snapshot in target_snapshots]
+
+        output_string=f'--- {halo} ---\n'+'\n'.join(string for string in snapshot_strings)
+
+        with open(f'halos/{halo}/redshift_list_{redshift_range[0]}to{redshift_range[1]}.txt','w') as f:
+            f.write(output_string)
+
+def get_m200s(halo,**kwargs):
+    if os.path.isdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'/cosma/apps/durham/dc-coll7/halos/{halo}') #Create halo directory if required
+        print(f'Created directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if os.path.isdir(f'halos/{halo}/m200s')!=True: #Detect for dedicated .npy storage directory for halo raw data
+        print('\nHalo Directory Not Present')
+        os.mkdir(f'halos/{halo}/m200s') #Create halo directory if required
+        print(f'Created m200 vs time directory for {halo}')
+    else:
+        print(f'\nDirectory for {halo} located')  
+
+    if 'snap_nums' not in kwargs:
+        if 'redshifts' in kwargs:
+            redshift_range=kwargs['redshifts']
+            start_snap_num,start_snap_redshift=get_snap_num(halo,redshift_range[0])
+            end_snap_num,end_snap_redshift=get_snap_num(halo,redshift_range[1])
+            snap_nums=[start_snap_num,end_snap_num]
+            snap_redshifts=[start_snap_redshift,end_snap_redshift]
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_nums=kwargs['snap_nums']
+        start_snap_redshift=get_redshift(halo,snap_nums[0])
+        end_snap_redshift=get_redshift(halo,snap_nums[1])
+        snap_redshifts=[start_snap_redshift,end_snap_redshift]
+
+    for snap_num in snap_nums:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_index=snap_nums.index(snap_num)
+            snap_num='0'+snap_num
+            snap_nums[snap_index]=snap_num
+
+    m200s=[]
+
+    snapshots=np.arange(int(snap_nums[0]),int(snap_nums[1])+1)
+
+    for snap_num in snapshots:
+        snap_num=str(snap_num)
+        while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
+        subfind_data=read_subfind_params(halo,snap_num=snap_num)
+        
+        m200=subfind_data['halo_m200'].to_value(units.M_sun)
+
+        m200s.append(m200)
+
+        np.save(f'halos/{halo}/m200s/m200.npy',m200s)
+
+def get_unweighted_gz(halo,**kwargs):
+    if 'snap_num' not in kwargs:
+        if 'redshift' in kwargs:
+            target_redshift=kwargs['redshift']
+            snap_num,snap_redshift=get_snap_num(halo,target_redshift)
+        else:
+            sys.exit('Please provide either a target redshift (\"redshift=X\") or snapshot number (\"snap_num=XXX\")')
+    else:
+        snap_num=kwargs['snap_num']
+        snap_redshift=get_redshift(halo,snap_num)  
+
+    snap_num=str(snap_num)
+    while len(snap_num)<3: #Reformats snapshot number correctly into 3 digit string
+            snap_num='0'+snap_num
+
+    if 'bins' in kwargs:
+        bin_num=kwargs['bins']
+    else:
+        bin_num=512 
+
+    plane_indexes=[[0,1],[0,2],[1,2]]
+    plane_names=['xy','xz','yz']
+
+    loaded_data={}
+    loaded_data['gz']=read_raw_file(halo,'gas','gz',snap_num=snap_num)
+    print('Loaded gz')
+    loaded_data['rel_pos']=read_raw_file(halo,'gas','rel_pos',snap_num=snap_num)
+    print('Loaded rel_pos')
+    rel_pos=loaded_data['rel_pos']
+
+    raw_metallicity=loaded_data['gz']
+    metallicity=raw_metallicity/z_sol
+
+    mean_metallicties={}
+
+    for plane in plane_indexes:
+        plane_name=plane_names[plane_indexes.index(plane)]
+        
+        mean_metallicties[plane_name]={}
+        mean_metallicties[plane_name]['metallicities']=stats.binned_statistic_2d(rel_pos[:,plane[0]],rel_pos[:,plane[1]],metallicity,bins=[bin_num,bin_num],statistic='mean').statistic
+
+    to_save=['metallicities']
+    save_data=np.array([[mean_metallicties['xy'][param],mean_metallicties['xz'][param],mean_metallicties['yz'][param]] for param in to_save])
+
+    if os.path.exists(f'halos/{halo}/weighting_test/{snap_num}') != True:
+        os.makedirs(f'halos/{halo}/weighting_test/{snap_num}',exist_ok=True)
+
+    np.save(f'halos/{halo}/weighting_test/{snap_num}/unweighted_gz.npy',save_data[0])
+
+
+
+
+
+    
+            
+
+            
+
+            
+
+    
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+        
+            
+
+
+
+
         
 
 
 
+
+
+
+
+
+
+        
+        
+
     
+
+
+        
+
+
         
 
 
 
 
-
-
-
-
-
-
-    
-
-        
-    
-    
-            
-                
-    
-    
-
-
             
 
-
-
-    
-
-    
-    
-
-    
-            
-            
-    
-        
-
-
-            
-
-
-           
-
-
-
-
-                
-
-    

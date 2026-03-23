@@ -11,6 +11,7 @@ import matplotlib.font_manager as font_manager
 import importlib
 import sys
 from matplotlib.colors import ListedColormap
+import matplotlib.colors as mcolors
 
 plt.rcParams["axes.formatter.use_mathtext"]=True #Hard-codes figure labels, fonts etc.
 plt.rcParams['font.family']='serif'
