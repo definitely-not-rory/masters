@@ -661,11 +661,15 @@ def stellar_masses_redshift(halos):
     if os.path.isdir(f'figures/all_halos/stellar_masses')!=True:
         os.makedirs(f'figures/all_halos/stellar_masses')
 
-    fig_masses,ax_masses=plt.subplots()
+    fig_masses,ax_masses=plt.subplots(figsize=(16,6))
 
-    colours=['r','b','g']
+    colours=['lightseagreen','deeppink','darkorange']
+    markers=['D','D','D']
 
-    dla_ranges=[(0,5),(0,0),(0,0)]
+    nH_snaps={'T1_Aug':{'DLA':[[0,5],[6,7]],'subDLA':[[0,9],[11,13]],'LymanLimit':[[0,13]]},'halo8':{'DLA':[[0,1],[4,19],[26,29],[35,38]],'subDLA':[[0,38]],'LymanLimit':[[0,38]]},'T4_Aug':{'DLA':[[1,2],[3,4]],'subDLA':[[0,12]],'LymanLimit':[[0,13]]}}
+
+    formation_events={'T1_Aug':{'Smaller Merger Begins':(2,'dashed'),'Small Merger Concludes, Main Merger Begins':(3,'dashed'),'Gas Merger Concludes':(5,'dashed'),'Overall Merger Concludes':(7,'dashed')},'T4_Aug':{'Merger Begins':(3,'dashed'),'Merger Concludes':(6,'dashed')},'halo8':{'Satellite In Halo':(15,'dotted'),'Central Disturbance':(19,'dotted'),'Disturbance Resolved':(21,'dotted'),'1st Merger Begins':(22,'dashed'),'1st Merger Concluding':(28,'dashed'),'2nd Merger In Progress':(31,'dashed'),'2nd Gas Merger Concludes':(32,'dashed'),'Tertiary Object In Halo':(33,'dotted'),'2nd Merger Concludes, 3rd Merger Begins':(34,'dashed'),'3rd Merger Concluding':(37,'dashed')}}
+
 
     for halo in halos:
         display_halo=halo.replace('_',' ')
@@ -673,14 +677,24 @@ def stellar_masses_redshift(halos):
         redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
         masses=np.load(f'halos/{halo}/stellar_masses/stellar_masses.npy')
           
-        ax_masses.plot(redshifts,masses,c=colours[halos.index(halo)])
+        ax_masses.plot(redshifts,masses,c=colours[halos.index(halo)],zorder=1,lw=2)
 
-        ax_masses.scatter(redshifts[dla_ranges[halos.index(halo)][0]:dla_ranges[halos.index(halo)][1]],masses[dla_ranges[halos.index(halo)][0]:dla_ranges[halos.index(halo)][1]],c=colours[halos.index(halo)],marker='d')
+        DLA_snaps=nH_snaps[halo]['DLA']
+        subDLA_snaps=nH_snaps[halo]['subDLA']
+        LLS_snaps=nH_snaps[halo]['LymanLimit']
+
+        DLA_points=[ax_masses.scatter(redshifts[snaps[0]:snaps[1]],masses[snaps[0]:snaps[1]],c='r',marker=markers[halos.index(halo)],zorder=4,s=30) for snaps in DLA_snaps]
+        subDLA_points=[ax_masses.scatter(redshifts[snaps[0]:snaps[1]],masses[snaps[0]:snaps[1]],c='b',marker=markers[halos.index(halo)],zorder=3,s=30) for snaps in subDLA_snaps]
+        LLS_points=[ax_masses.scatter(redshifts[snaps[0]:snaps[1]],masses[snaps[0]:snaps[1]],c='g',marker=markers[halos.index(halo)],zorder=2,s=30) for snaps in LLS_snaps]
+
+        events=[ax_masses.axvline(redshifts[formation_events[halo][event][0]],c=colours[halos.index(halo)],linestyle=formation_events[halo][event][1],alpha=0.5,zorder=0) for event in formation_events[halo]]
+
+        event_labels=[ax_masses.text(redshifts[formation_events[halo][event][0]]+0.03,1.4*10**7,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor') if event=='Merger Begins' else ax_masses.text(redshifts[formation_events[halo][event][0]],1.3*10**7,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor')for event in formation_events[halo]]
 
         if halo=='halo8':
-            shift=0.4
+            shift=0.15
         else:
-            shift=0.6
+            shift=0.2
         plt.text(redshifts[0]+shift,masses[0],display_halo,fontsize=14,c=colours[halos.index(halo)])
     
 
@@ -689,10 +703,9 @@ def stellar_masses_redshift(halos):
     ax_masses.xaxis.label.set_size(18)
     ax_masses.yaxis.label.set_size(18)
     ax_masses.tick_params(labelsize=18)
-    plt.title(f'Total Halo Stellar Mass',fontsize=20)
     plt.xlabel('Redshift (z)',fontsize=18)
     plt.ylabel(r'Total Stellar Mass ($M_{\odot}$)',fontsize=18)
-    plt.xlim([4.7,0.9])
+    plt.xlim([4.3,0.9])
     plt.yscale('log')
 
     plt.savefig(f'figures/all_halos/stellar_masses/stellar_masses.pdf',format="pdf",dpi=250,bbox_inches='tight')
@@ -734,9 +747,14 @@ def metallicities_redshift(halos):
     if os.path.isdir(f'figures/all_halos/metallicities_redshift')!=True:
         os.makedirs(f'figures/all_halos/metallicities_redshift')
 
-    fig_zs,ax_zs=plt.subplots()
+    fig_zs,ax_zs=plt.subplots(figsize=(16,6))
 
-    colours=['r','b','g']
+    colours=['lightseagreen','deeppink','darkorange']
+    markers=['D','D','D']
+
+    nH_snaps={'T1_Aug':{'DLA':[[0,5],[6,7]],'subDLA':[[0,9],[11,13]],'LymanLimit':[[0,13]]},'halo8':{'DLA':[[0,1],[4,19],[26,29],[35,38]],'subDLA':[[0,38]],'LymanLimit':[[0,38]]},'T4_Aug':{'DLA':[[1,2],[3,4]],'subDLA':[[0,12]],'LymanLimit':[[0,13]]}}
+
+    formation_events={'T1_Aug':{'Smaller Merger Begins':(2,'dashed'),'Small Merger Concludes, Main Merger Begins':(3,'dashed'),'Gas Merger Concludes':(5,'dashed'),'Overall Merger Concludes':(7,'dashed')},'T4_Aug':{'Merger Begins':(3,'dashed'),'Merger Concludes':(6,'dashed')},'halo8':{'Satellite In Halo':(15,'dotted'),'Central Disturbance':(19,'dotted'),'Disturbance Resolved':(21,'dotted'),'1st Merger Begins':(22,'dashed'),'1st Merger Concluding':(28,'dashed'),'2nd Merger In Progress':(31,'dashed'),'2nd Gas Merger Concludes':(32,'dashed'),'Tertiary Object In Halo':(33,'dotted'),'2nd Merger Concludes, 3rd Merger Begins':(34,'dashed'),'3rd Merger Concluding':(37,'dashed')}}
 
     for halo in halos:
         display_halo=halo.replace('_',' ')
@@ -744,16 +762,31 @@ def metallicities_redshift(halos):
         redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
         gas_zs=np.load(f'halos/{halo}/metallicity_behaviour/gas.npy')
         star_zs=np.load(f'halos/{halo}/metallicity_behaviour/stars.npy')
-
-        print(gas_zs)
           
-        ax_zs.plot(redshifts,gas_zs,c=colours[halos.index(halo)],linestyle='dashed')
-        ax_zs.plot(redshifts,star_zs,c=colours[halos.index(halo)],linestyle='dotted')
+        ax_zs.plot(redshifts,gas_zs,c=colours[halos.index(halo)],zorder=1,lw=2)
+        ax_zs.plot(redshifts,star_zs,c=colours[halos.index(halo)],linestyle='dashdot',zorder=0,lw=2)
+
+        DLA_snaps=nH_snaps[halo]['DLA']
+        subDLA_snaps=nH_snaps[halo]['subDLA']
+        LLS_snaps=nH_snaps[halo]['LymanLimit']
+
+        DLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],gas_zs[snaps[0]:snaps[1]],c='r',marker=markers[halos.index(halo)],zorder=4,s=30) for snaps in DLA_snaps]
+        subDLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],gas_zs[snaps[0]:snaps[1]],c='b',marker=markers[halos.index(halo)],zorder=3,s=30) for snaps in subDLA_snaps]
+        LLS_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],gas_zs[snaps[0]:snaps[1]],c='g',marker=markers[halos.index(halo)],zorder=2,s=30) for snaps in LLS_snaps]
+
+        DLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],star_zs[snaps[0]:snaps[1]],c='r',marker=markers[halos.index(halo)],zorder=4,s=30) for snaps in DLA_snaps]
+        subDLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],star_zs[snaps[0]:snaps[1]],c='b',marker=markers[halos.index(halo)],zorder=3,s=30) for snaps in subDLA_snaps]
+        LLS_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],star_zs[snaps[0]:snaps[1]],c='g',marker=markers[halos.index(halo)],zorder=2,s=30) for snaps in LLS_snaps]
+
+        events=[ax_zs.axvline(redshifts[formation_events[halo][event][0]],c=colours[halos.index(halo)],linestyle=formation_events[halo][event][1],alpha=0.5,zorder=0) for event in formation_events[halo]]
+
+        event_labels=[ax_zs.text(redshifts[formation_events[halo][event][0]]+0.03,0.245,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor') if event=='Merger Begins' else ax_zs.text(redshifts[formation_events[halo][event][0]],0.237,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor')for event in formation_events[halo]]
+
         if halo=='halo8':
-            shift=0.4
+            shift=0.31
         else:
-            shift=0.6
-        plt.text(redshifts[0]+shift,gas_zs[0],f'{display_halo} Gas',fontsize=14,c=colours[halos.index(halo)])
+            shift=0.35
+        plt.text(redshifts[0]-0.03+shift,gas_zs[0],f'{display_halo} Gas',fontsize=14,c=colours[halos.index(halo)])
         plt.text(redshifts[0]+shift,star_zs[0],f'{display_halo} Stars',fontsize=14,c=colours[halos.index(halo)])
 
     ax_zs.invert_xaxis()
@@ -761,10 +794,9 @@ def metallicities_redshift(halos):
     ax_zs.xaxis.label.set_size(18)
     ax_zs.yaxis.label.set_size(18)
     ax_zs.tick_params(labelsize=18)
-    plt.title(f'Stellar and Gas Solar-Relative Metallicity',fontsize=20)
     plt.xlabel('Redshift (z)',fontsize=18)
     plt.ylabel(r'Metallicity ($Z_\odot$)',fontsize=18)
-    plt.xlim([4.7,0.9])
+    plt.xlim([4.4,0.9])
 
     plt.savefig(f'figures/all_halos/metallicities_redshift/metallicities.pdf',format="pdf",dpi=250,bbox_inches='tight')
 
@@ -861,21 +893,38 @@ def m200_redshift(halos):
     if os.path.isdir(f'figures/all_halos/m200_redshift')!=True:
         os.makedirs(f'figures/all_halos/m200_redshift')
 
-    fig_zs,ax_zs=plt.subplots()
+    fig_zs,ax_zs=plt.subplots(figsize=(16,6))
 
-    colours=['r','b','g']
+    colours=['lightseagreen','deeppink','darkorange']
+    markers=['D','D','D']
+
+    nH_snaps={'T1_Aug':{'DLA':[[0,5],[6,7]],'subDLA':[[0,9],[11,13]],'LymanLimit':[[0,13]]},'halo8':{'DLA':[[0,1],[4,19],[26,29],[35,38]],'subDLA':[[0,38]],'LymanLimit':[[0,38]]},'T4_Aug':{'DLA':[[1,2],[3,4]],'subDLA':[[0,12]],'LymanLimit':[[0,13]]}}
+
+    formation_events={'T1_Aug':{'Smaller Merger Begins':(2,'dashed'),'Small Merger Concludes, Main Merger Begins':(3,'dashed'),'Gas Merger Concludes':(5,'dashed'),'Overall Merger Concludes':(7,'dashed')},'T4_Aug':{'Merger Begins':(3,'dashed'),'Merger Concludes':(6,'dashed')},'halo8':{'Satellite In Halo':(15,'dotted'),'Central Disturbance':(19,'dotted'),'Disturbance Resolved':(21,'dotted'),'1st Merger Begins':(22,'dashed'),'1st Merger Concluding':(28,'dashed'),'2nd Merger In Progress':(31,'dashed'),'2nd Gas Merger Concludes':(32,'dashed'),'Tertiary Object In Halo':(33,'dotted'),'2nd Merger Concludes, 3rd Merger Begins':(34,'dashed'),'3rd Merger Concluding':(37,'dashed')}}
 
     for halo in halos:
         display_halo=halo.replace('_',' ')
 
         redshifts=np.load(f'halos/{halo}/stellar_masses/redshifts.npy')
         m200s=np.load(f'halos/{halo}/m200s/m200.npy')
-          
-        ax_zs.plot(redshifts,m200s,c=colours[halos.index(halo)])
+
+        DLA_snaps=nH_snaps[halo]['DLA']
+        subDLA_snaps=nH_snaps[halo]['subDLA']
+        LLS_snaps=nH_snaps[halo]['LymanLimit']
+
+        DLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],m200s[snaps[0]:snaps[1]],c='r',marker=markers[halos.index(halo)],zorder=4,s=30) for snaps in DLA_snaps]
+        subDLA_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],m200s[snaps[0]:snaps[1]],c='b',marker=markers[halos.index(halo)],zorder=3,s=30) for snaps in subDLA_snaps]
+        LLS_points=[ax_zs.scatter(redshifts[snaps[0]:snaps[1]],m200s[snaps[0]:snaps[1]],c='g',marker=markers[halos.index(halo)],zorder=2,s=30) for snaps in LLS_snaps]
+
+        events=[ax_zs.axvline(redshifts[formation_events[halo][event][0]],c=colours[halos.index(halo)],linestyle=formation_events[halo][event][1],alpha=0.5,zorder=0) for event in formation_events[halo]]
+
+        event_labels=[ax_zs.text(redshifts[formation_events[halo][event][0]]+0.03,4.2*10**9,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor') if event=='Merger Begins' else ax_zs.text(redshifts[formation_events[halo][event][0]],4.1*10**9,event,c=colours[halos.index(halo)],rotation=45,rotation_mode='anchor')for event in formation_events[halo]]
+
+        ax_zs.plot(redshifts,m200s,c=colours[halos.index(halo)],zorder=1,lw=2)
         if halo=='halo8':
-            shift=0.4
+            shift=0.15
         else:
-            shift=0.6
+            shift=0.2
         plt.text(redshifts[0]+shift,m200s[0],f'{display_halo}',fontsize=14,c=colours[halos.index(halo)])
 
 
@@ -884,15 +933,13 @@ def m200_redshift(halos):
     ax_zs.xaxis.label.set_size(18)
     ax_zs.yaxis.label.set_size(18)
     ax_zs.tick_params(labelsize=18)
-    plt.title(r'$M_{200_{crit}}$',fontsize=20)
     plt.xlabel('Redshift (z)',fontsize=18)
     plt.ylabel(r'$M_{200_{crit}} (M_\odot)$',fontsize=18)
-    plt.xlim([4.7,0.9])
+    plt.xlim([4.3,0.9])
 
     plt.savefig(f'figures/all_halos/m200_redshift/m200s.pdf',format="pdf",dpi=250,bbox_inches='tight')
 
     plt.show()
-
 
 def rho_gz_scatter(halo,bin_num,plane,**kwargs):
     if 'snap_num' not in kwargs:
@@ -1389,5 +1436,3 @@ def sightline_hists(halo,plane,**kwargs):
     plt.savefig(f'figures/{halo}/sightlines/{snap_num}/sightline_hists.pdf',format="pdf",dpi=250,bbox_inches='tight')
 
     plt.show()
-
-
