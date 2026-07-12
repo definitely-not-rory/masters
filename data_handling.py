@@ -905,6 +905,8 @@ def get_metallicity_behaviour(halo,**kwargs):
         raw_gas_z=subfind_data['halo_gas_met']
         raw_star_z=subfind_data['halo_star_met']
 
+        print(raw_gas_z)
+
         gas_z=raw_gas_z/z_sol
         star_z=raw_star_z/z_sol
 
